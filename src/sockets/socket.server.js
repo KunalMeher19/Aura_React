@@ -2,6 +2,8 @@ const { Server } = require('socket.io');
 const cookie = require('cookie')
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model')
+const aiService = require('../services/ai.service');
+const messageModel = require('../models/message.model')
 
 function initSocketServer(httpServer) {
 
@@ -29,11 +31,50 @@ function initSocketServer(httpServer) {
 
 
     io.on("connection", (socket) => {
-        console.log("User connected:", socket.user.fullName.firstName)
-        
-        socket.on("ai-message",(messagePayload)=>{
-            console.log(messagePayload);
+        console.log("User connected:", socket.user.fullName.firstName, socket.id)
+
+        socket.on("ai-message", async (messagePayload) => {
+
+            await messageModel.create({
+                user: socket.user._id,
+                chat: messagePayload.chat,
+                content: messagePayload.content,
+                role: "user"
+            })
+
+            const chatHistory = await messageModel.find({
+                chat: messagePayload.chat
+            })
+
+
+            /* Becasue we only have to sent the data like
+            /  [{
+                    role: "user"||"model",
+                    parts: [{text: prompt in text}]
+                }]
+                
+                so thats why we are mapping the chathistory to get those things and sending it to gemini for STM(Short Term Memory) implementation
+            */
+            const response = await aiService.contentGenerator(chatHistory.map(item => {
+                return {
+                    role: item.role,
+                    parts: [{ text: item.content }]
+                }
+            }))
+
+            await messageModel.create({
+                user: socket.user._id,
+                chat: messagePayload.chat,
+                content: response,
+                role: "model"
+            })
+
+            socket.emit("ai-response", {
+                content: response,
+                chat: messagePayload.chat
+            })
         })
+
         socket.on("disconnect", () => {
             console.log(`user ${socket.id}  disconnected`)
         })
