@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model')
 const aiService = require('../services/ai.service');
 const messageModel = require('../models/message.model')
+const { createMemory, queryMemory } = require('../services/vector.service');
 
 function initSocketServer(httpServer) {
 
@@ -35,26 +36,39 @@ function initSocketServer(httpServer) {
 
         socket.on("ai-message", async (messagePayload) => {
 
-            await messageModel.create({
+            const message = await messageModel.create({
                 user: socket.user._id,
                 chat: messagePayload.chat,
                 content: messagePayload.content,
                 role: "user"
             })
 
-            const chatHistory = await messageModel.find({
-                chat: messagePayload.chat
+            const vectors = await aiService.embeddingGenerator(messagePayload.content);
+
+            const memory = await queryMemory({
+                queryVector: vectors,
+                limit: 3,
+                metadata:{}
             })
 
+            await createMemory({
+                vectors,
+                messageId: message._id,
+                metadata: {
+                    chat: messagePayload.chat,
+                    user: socket.user._id,
+                    text: messagePayload.content
+                }
+            })
 
-            /* Becasue we only have to sent the data like
-            /  [{
-                    role: "user"||"model",
-                    parts: [{text: prompt in text}]
-                }]
-                
-                so thats why we are mapping the chathistory to get those things and sending it to gemini for STM(Short Term Memory) implementation
-            */
+            console.log(memory)  
+
+            const chatHistory = (await messageModel.find({
+                chat: messagePayload.chat
+            }).sort({ createdAt: -1 }).limit(20).lean()).reverse()
+            /* We are here providing last 20 message to the ai because if we don't do that then the pricing to send a whole bunch of data to the ai will get increase so to optimise that we only remember last 20 message */
+
+
             const response = await aiService.contentGenerator(chatHistory.map(item => {
                 return {
                     role: item.role,
@@ -62,11 +76,23 @@ function initSocketServer(httpServer) {
                 }
             }))
 
-            await messageModel.create({
+            const resposneMessage = await messageModel.create({
                 user: socket.user._id,
                 chat: messagePayload.chat,
                 content: response,
                 role: "model"
+            })
+
+            const resoponseVectors = await aiService.embeddingGenerator(response);
+
+            await createMemory({
+                vectors: resoponseVectors,
+                messageId: resposneMessage._id,
+                metadata: {
+                    chat: messagePayload.chat,
+                    user: socket.user._id,
+                    text: response
+                }
             })
 
             socket.emit("ai-response", {
