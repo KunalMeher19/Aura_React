@@ -100,7 +100,7 @@ function initSocketServer(httpServer) {
                 })
 
                 // Save response and embeddings in parallel
-                const [resposneMessage, resoponseVectors] = await Promise.all([
+                const [resposneMessage, resoponseVectors] = await Promise.all([ 
                     messageModel.create({
                         user: socket.user._id,
                         chat: messagePayload.chat,
