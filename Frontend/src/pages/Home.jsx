@@ -48,23 +48,14 @@ const Home = () => {
 
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
-  const [ messages, setMessages ] = useState([
-    // {
-    //   type: 'user',
-    //   content: 'Hello, how can I help you today?'
-    // },
-    // {
-    //   type: 'ai',
-    //   content: 'Hi there! I need assistance with my account.'
-    // }
-  ]);
+  const [ messages, setMessages ] = useState([]);
 
   const handleNewChat = () => {
     setIsNewChatPopupOpen(true);
   }
 
   const createNewChat = async (title) => {
-    const response = await axios.post("https://cohort-1-project-chat-gpt.onrender.com/api/chat", {
+    const response = await axios.post("http://localhost:3000/api/chat", {
       title
     }, {
       withCredentials: true
@@ -77,12 +68,12 @@ const Home = () => {
   // Ensure at least one chat exists initially
   useEffect(() => {
 
-    axios.get("https://cohort-1-project-chat-gpt.onrender.com/api/chat", { withCredentials: true })
+    axios.get("http://localhost:3000/api/chat", { withCredentials: true })
       .then(response => {
         dispatch(setChats(response.data.chats.reverse()));
       })
 
-    const tempSocket = io("https://cohort-1-project-chat-gpt.onrender.com", {
+    const tempSocket = io("http://localhost:3000", {
       withCredentials: true,
     })
 
@@ -147,7 +138,7 @@ const Home = () => {
 
   const getMessages = async (chatId) => {
 
-   const response = await  axios.get(`https://cohort-1-project-chat-gpt.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true })
+   const response = await  axios.get(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true })
 
    console.log("Fetched messages:", response.data.messages);
 
@@ -156,6 +147,19 @@ const Home = () => {
      content: m.content
    })));
 
+  }
+
+  const deleteChat = async(chatId) => {
+    try {
+      await axios.delete(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
+      dispatch(setChats(chats.filter(chat => chat._id !== chatId)));
+      if (activeChatId === chatId) {
+        dispatch(selectChat(null));
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
   }
 
 
@@ -176,6 +180,7 @@ return (
       onToggleSidebar={toggleSidebar}
       open={sidebarOpen}
       isCollapsed={!isMobile && sidebarCollapsed}
+      deleteChat={deleteChat}
     />
     <main className="chat-main" role="main">
       {messages.length === 0 && (

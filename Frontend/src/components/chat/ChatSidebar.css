@@ -55,6 +55,48 @@
   align-items: center;
 }
 
+.title-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 8px;
+}
+
+.delete-chat-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 1; /* Always visible on mobile */
+  transition: opacity 0.2s ease;
+}
+
+.delete-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  color: var(--vscode-editor-foreground); /* Use the main text color for better visibility */
+  filter: brightness(1.2); /* Make it slightly brighter */
+}
+
+/* Add hover effect for better interaction feedback */
+.delete-chat-button:hover .delete-icon {
+  color: var(--vscode-errorForeground);
+  filter: brightness(1.5);
+}
+
+/* Desktop styles - hide delete button by default and show on hover */
+@media (min-width: 960px) {
+  .delete-chat-button {
+    opacity: 0;
+  }
+  
+  .chat-list-item:hover .delete-chat-button {
+    opacity: 1;
+  }
+}
+
 @media (min-width: 960px) {
   .collapsed .sidebar-top-row {
     flex-direction: column;

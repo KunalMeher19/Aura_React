@@ -1,7 +1,8 @@
 import React from 'react';
 import './ChatSidebar.css';
+import binIcon from '../../assets/bin.svg';
 
-const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSidebar, open, isCollapsed }) => {
+const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSidebar, open, isCollapsed, deleteChat }) => {
   return (
     <aside className={"chat-sidebar " + (open ? 'open ' : '') + (isCollapsed ? 'collapsed' : '')} aria-label="Previous chats">
       <div className="sidebar-header">
@@ -26,7 +27,21 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSid
             className={"chat-list-item " + (c._id === activeChatId ? 'active' : '')}
             onClick={() => onSelectChat(c._id)}
           >
-            <span className="title-line">{c.title}</span>
+            <span className="title-line">
+              {c.title}
+              <div 
+                className="delete-chat-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(c._id);
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <img src={binIcon} alt="Delete chat" className="delete-icon" />
+              </div>
+            </span>
+            
           </button>
         ))}
         {chats.length === 0 && <p className="empty-hint">No chats yet.</p>}
