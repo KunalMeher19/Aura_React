@@ -1,0 +1,130 @@
+.chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  background: var(--vscode-sideBar-background);
+  border-right: 1px solid var(--vscode-sideBar-border);
+  transition: transform 0.3s ease;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: -270px;
+  z-index: 40;
+}
+
+.chat-sidebar.open {
+  transform: translateX(270px);
+}
+
+@media (min-width: 960px) {
+  .chat-sidebar {
+    position: static;
+    transform: none;
+    left: 0;
+  }
+}
+
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--vscode-sideBar-border);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.sidebar-logo img {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.collapse-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.new-chat-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.collapse-button:hover,
+.new-chat-button:hover {
+  opacity: 0.9;
+}
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-list-item {
+  text-align: left;
+  background: none;
+  border: 1px solid var(--vscode-button-border);
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font: inherit;
+  color: var(--vscode-foreground);
+  transition: background-color 0.2s;
+}
+
+.chat-list-item:hover {
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.chat-list-item.active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-button-background);
+}
+
+.empty-hint {
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
