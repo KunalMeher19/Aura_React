@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import toast from 'react-hot-toast';store
+import toast from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import ChatMobileBar from '../components/chat/ChatMobileBar.jsx';
 import ChatSidebar from '../components/chat/ChatSidebar.jsx';
