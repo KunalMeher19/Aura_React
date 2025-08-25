@@ -17,7 +17,7 @@ const Register = () => {
     async function handleSubmit(e) {
         e.preventDefault();
         setSubmitting(true);
-        const registerPromise = axios.post("https://chat-gpt-react-backend.onrender.com/api/auth/register", {
+        const registerPromise = axios.post("https://aura-x4bd.onrender.com/api/auth/register", {
             email: form.email,
             fullName: {
                 firstName: form.firstname,

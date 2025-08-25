@@ -20,7 +20,7 @@ const Login = () => {
         setSubmitting(true);
 
 
-        const loginPromise = axios.post("https://chat-gpt-react-backend.onrender.com/api/auth/login", {
+        const loginPromise = axios.post("https://aura-x4bd.onrender.com/api/auth/login", {
             email: form.email,
             password: form.password
         },
