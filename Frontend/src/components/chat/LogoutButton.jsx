@@ -9,7 +9,7 @@ const LogoutButton = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:3000/api/auth/logout', {}, {
+      await axios.post('https://chat-gpt-react-backend.onrender.com/api/auth/logout', {}, {
         withCredentials: true
       });
       toast.success('Logged out successfully');

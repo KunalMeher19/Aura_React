@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast';store
 import Cookies from 'js-cookie';
 import ChatMobileBar from '../components/chat/ChatMobileBar.jsx';
 import ChatSidebar from '../components/chat/ChatSidebar.jsx';
@@ -70,7 +70,7 @@ const Home = () => {
 
   const createNewChat = async (title) => {
     try {
-      const response = await axios.post("http://localhost:3000/api/chat", {
+      const response = await axios.post("https://chat-gpt-react-backend.onrender.com/api/chat", {
         title
       }, {
         withCredentials: true
@@ -86,7 +86,7 @@ const Home = () => {
 
   useEffect(() => {
     // Fetch chats
-    axios.get("http://localhost:3000/api/chat", { withCredentials: true })
+    axios.get("https://chat-gpt-react-backend.onrender.com/api/chat", { withCredentials: true })
       .then(response => {
         dispatch(setChats(response.data.chats.reverse()));
       })
@@ -95,7 +95,7 @@ const Home = () => {
       });
 
     // Setup socket
-    const tempSocket = io("http://localhost:3000", {
+    const tempSocket = io("https://chat-gpt-react-backend.onrender.com", {
       withCredentials: true,
     });
 
@@ -181,7 +181,7 @@ const Home = () => {
 
   const getMessages = async (chatId) => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
+      const response = await axios.get(`https://chat-gpt-react-backend.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
       setMessages(response.data.messages.map(m => ({
         type: m.role === 'user' ? 'user' : 'ai',
         content: m.content
@@ -193,7 +193,7 @@ const Home = () => {
 
   const deleteChat = async (chatId) => {
     try {
-      await axios.delete(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
+      await axios.delete(`https://chat-gpt-react-backend.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
       dispatch(setChats(chats.filter(chat => chat._id !== chatId)));
       if (activeChatId === chatId) {
         dispatch(selectChat(null));

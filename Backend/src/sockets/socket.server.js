@@ -37,8 +37,6 @@ function initSocketServer(httpServer) {
     })
 
     io.on("connection", (socket) => {
-        console.log("User connected:", socket.user.fullName.firstName, socket.id)
-
         socket.on("ai-message", async (messagePayload) => {
 
             try {
