@@ -36,7 +36,7 @@ const Home = () => {
         navigate('/login');
       }
     };
-    
+
     checkAuth();
   }, [navigate]);
 
@@ -108,6 +108,7 @@ const Home = () => {
     });
 
     tempSocket.on("ai-response", (messagePayload) => {
+      if (messagePayload.chat !== activeChatId) { dispatch(sendingFinished()); return; };
       setMessages((prevMessages) => [...prevMessages, {
         type: 'ai',
         content: messagePayload.content
