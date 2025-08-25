@@ -1,5 +1,6 @@
 const chatModel = require('../models/chat.model');
 const messageModel = require('../models/message.model');
+const vectorService = require('../services/vector.service')
 
 async function createChat(req, res) {
     const { title } = req.body;
@@ -47,11 +48,12 @@ async function getMessages(req, res) {
     })
 }
 
-async function deleteChat(req,res){
+async function deleteChat(req, res) {
     const chatId = req.params.id;
 
     await chatModel.findByIdAndDelete(chatId);
     await messageModel.deleteMany({ chat: chatId });
+    await vectorService.deleteChatMemory(chatId);
 
     res.status(200).json({
         message: "chat deleted successfully"

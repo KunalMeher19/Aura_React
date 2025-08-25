@@ -1,6 +1,7 @@
 import React from 'react';
 import './ChatSidebar.css';
 import binIcon from '../../assets/bin.svg';
+import LogoutButton from './LogoutButton';
 
 const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSidebar, open, isCollapsed, deleteChat }) => {
   return (
@@ -20,32 +21,36 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSid
           </div>
         </div>
       </div>
-      <nav className="chat-list" aria-live="polite">
-        {chats.map(c => (
-          <button
-            key={c._id}
-            className={"chat-list-item " + (c._id === activeChatId ? 'active' : '')}
-            onClick={() => onSelectChat(c._id)}
-          >
-            <span className="title-line">
-              {c.title}
-              <div 
-                className="delete-chat-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteChat(c._id);
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                <img src={binIcon} alt="Delete chat" className="delete-icon" />
-              </div>
-            </span>
-            
-          </button>
-        ))}
-        {chats.length === 0 && <p className="empty-hint">No chats yet.</p>}
-      </nav>
+      <div className="sidebar-content">
+        <nav className="chat-list" aria-live="polite">
+          {chats.map(c => (
+            <button
+              key={c._id}
+              className={"chat-list-item " + (c._id === activeChatId ? 'active' : '')}
+              onClick={() => onSelectChat(c._id)}
+            >
+              <span className="title-line">
+                {c.title}
+                <div 
+                  className="delete-chat-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteChat(c._id);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <img src={binIcon} alt="Delete chat" className="delete-icon" />
+                </div>
+              </span>
+            </button>
+          ))}
+          {chats.length === 0 && <p className="empty-hint">No chats yet.</p>}
+        </nav>
+        <div className="sidebar-footer">
+          <LogoutButton />
+        </div>
+      </div>
     </aside>
   );
 };

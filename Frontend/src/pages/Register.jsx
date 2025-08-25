@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Register = () => {
     const [ form, setForm ] = useState({ email: '', firstname: '', lastname: '', password: '' });
@@ -16,9 +17,7 @@ const Register = () => {
     async function handleSubmit(e) {
         e.preventDefault();
         setSubmitting(true);
-        console.log(form);
-
-        axios.post("http://localhost:3000/api/auth/register", {
+        const registerPromise = axios.post("http://localhost:3000/api/auth/register", {
             email: form.email,
             fullName: {
                 firstName: form.firstname,
@@ -27,19 +26,21 @@ const Register = () => {
             password: form.password
         }, {
             withCredentials: true
-        }).then((res) => {
-            console.log(res);
-            navigate("/");
-        }).catch((err) => {
-            console.error(err);
-            alert('Registration failed (placeholder)');
-        })
+        });
+
+        toast.promise(registerPromise, {
+            loading: 'Creating your account...',
+            success: () => {
+                navigate("/");
+                return 'Account created successfully!';
+            },
+            error: (err) => {
+                return err.response?.data?.message || 'Registration failed. Please try again.';
+            }
+        });
 
         try {
-            // Placeholder: integrate real registration logic / API call.
-
-        } catch (err) {
-            console.error(err);
+            await registerPromise;
         } finally {
             setSubmitting(false);
         }

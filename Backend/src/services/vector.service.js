@@ -5,7 +5,7 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 // Create a dense index with integrated embedding
-const gptEmbeddingsIndex = pc.Index('gpt-embeddings')
+const gptEmbeddingsIndex = pc.index('gpt-embeddings')
 
 /* This is fnc to save the messages into the pinecode in embedded form */
 async function createMemory({ vectors, metadata, messageId }) {
@@ -27,4 +27,11 @@ async function queryMemory({ queryVector, limit, metadata }) {
     return data.matches
 }
 
-module.exports = { createMemory, queryMemory }
+async function deleteChatMemory(chatId) {
+  await gptEmbeddingsIndex.deleteMany({
+    chat: { $eq: chatId } 
+  });
+}
+
+
+module.exports = { createMemory, queryMemory, deleteChatMemory }

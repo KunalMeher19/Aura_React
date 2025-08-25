@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link,useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 
 const Login = () => {
@@ -19,23 +20,31 @@ const Login = () => {
         setSubmitting(true);
 
 
-        console.log(form);
-
-        axios.post("http://localhost:3000/api/auth/login", {
+        const loginPromise = axios.post("http://localhost:3000/api/auth/login", {
             email: form.email,
             password: form.password
         },
             {
                 withCredentials: true
             }
-        ).then((res) => {
-            console.log(res);
-            navigate("/");
-        }).catch((err) => {
-            console.error(err);
-        }).finally(() => {
-            setSubmitting(false);
+        );
+
+        toast.promise(loginPromise, {
+            loading: 'Signing in...',
+            success: () => {
+                navigate("/");
+                return 'Successfully signed in!';
+            },
+            error: (err) => {
+                return err.response?.data?.message || 'Failed to sign in. Please try again.';
+            }
         });
+
+        try {
+            await loginPromise;
+        } finally {
+            setSubmitting(false);
+        }
 
     }
 
