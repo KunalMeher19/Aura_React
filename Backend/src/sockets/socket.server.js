@@ -96,7 +96,13 @@ function initSocketServer(httpServer) {
                 ]
 
                 const response = await aiService.contentGenerator([...ltm, ...stm])
-
+                
+                // Emit response early
+                socket.emit("ai-response", {
+                    content: response,
+                    chat: messagePayload.chat
+                })
+                
                 // Save response and embeddings in parallel
                 const [resposneMessage, resoponseVectors] = await Promise.all([ 
                     messageModel.create({
@@ -108,11 +114,6 @@ function initSocketServer(httpServer) {
                     aiService.embeddingGenerator(response)
                 ])
                 
-                // Emit response early
-                socket.emit("ai-response", {
-                    content: response,
-                    chat: messagePayload.chat
-                })
 
 
                 // Store AI response memory
