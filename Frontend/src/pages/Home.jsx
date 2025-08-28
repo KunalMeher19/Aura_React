@@ -70,7 +70,7 @@ const Home = () => {
 
   const createNewChat = async (title) => {
     try {
-      const response = await axios.post("https://aura-x4bd.onrender.com/api/chat", {
+      const response = await axios.post("http://localhost:3000/api/chat", {
         title
       }, {
         withCredentials: true
@@ -86,7 +86,7 @@ const Home = () => {
 
   useEffect(() => {
     // Fetch chats
-    axios.get("https://aura-x4bd.onrender.com/api/chat", { withCredentials: true })
+    axios.get("http://localhost:3000/api/chat", { withCredentials: true })
       .then(response => {
         dispatch(setChats(response.data.chats.reverse()));
       })
@@ -95,7 +95,7 @@ const Home = () => {
       });
 
     // Setup socket
-    const tempSocket = io("https://aura-x4bd.onrender.com", {
+    const tempSocket = io("http://localhost:3000", {
       withCredentials: true,
     });
 
@@ -108,7 +108,7 @@ const Home = () => {
     });
 
     tempSocket.on("ai-response", (messagePayload) => {
-      if (messagePayload.chat !== activeChatId) { dispatch(sendingFinished()); return; };
+      /* if (messagePayload.chat !== activeChatId) { dispatch(sendingFinished()); return; }; */
       setMessages((prevMessages) => [...prevMessages, {
         type: 'ai',
         content: messagePayload.content
@@ -182,7 +182,7 @@ const Home = () => {
 
   const getMessages = async (chatId) => {
     try {
-      const response = await axios.get(`https://aura-x4bd.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
+      const response = await axios.get(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
       setMessages(response.data.messages.map(m => ({
         type: m.role === 'user' ? 'user' : 'ai',
         content: m.content
@@ -194,7 +194,7 @@ const Home = () => {
 
   const deleteChat = async (chatId) => {
     try {
-      await axios.delete(`https://aura-x4bd.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
+      await axios.delete(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
       dispatch(setChats(chats.filter(chat => chat._id !== chatId)));
       if (activeChatId === chatId) {
         dispatch(selectChat(null));
