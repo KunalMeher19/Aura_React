@@ -11,7 +11,7 @@ function initSocketServer(httpServer) {
     const io = new Server(httpServer, {
         cors: {
             origin: "http://localhost:5173",
-            allowedHeaders: [ "Content-Type", "Authorization" ],
+            allowedHeaders: ["Content-Type", "Authorization"],
             credentials: true
         }
     });
@@ -56,7 +56,7 @@ function initSocketServer(httpServer) {
                     queryMemory({
                         queryVector: vectors,
                         limit: 3,
-                        metadata:{
+                        metadata: {
                             user: socket.user._id
                         }
                     }),
@@ -95,21 +95,21 @@ function initSocketServer(httpServer) {
                     }
                 ]
 
-                                // Switch model if mode is 'thinking' or 'deepthink'
-                                let modelOverride = undefined;
-                                if (messagePayload.mode === 'thinking' || messagePayload.mode === 'deepthink') {
-                                    modelOverride = 'gemini-2.5-flash';
-                                }
-                                const response = await aiService.contentGenerator([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined)
-                
+                // Switch model if mode is 'thinking'
+                let modelOverride = undefined;
+                if (messagePayload.mode === 'thinking') {
+                    modelOverride = 'gemini-2.5-flash';
+                }
+                const response = await aiService.contentGenerator([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined)
+
                 // Emit response early
                 socket.emit("ai-response", {
                     content: response,
                     chat: messagePayload.chat
                 })
-                
+
                 // Save response and embeddings in parallel
-                const [resposneMessage, resoponseVectors] = await Promise.all([ 
+                const [resposneMessage, resoponseVectors] = await Promise.all([
                     messageModel.create({
                         user: socket.user._id,
                         chat: messagePayload.chat,
@@ -118,7 +118,7 @@ function initSocketServer(httpServer) {
                     }),
                     aiService.embeddingGenerator(response)
                 ])
-                
+
 
 
                 // Store AI response memory
