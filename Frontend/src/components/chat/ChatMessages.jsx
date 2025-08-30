@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import './ChatMessages.css';
 
 
@@ -8,11 +10,16 @@ const ChatMessages = ({ messages, isSending }) => {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, isSending]);
   return (
     <div className="messages" aria-live="polite">
-      {messages.map((m,index) => (
+      {messages.map((m, index) => (
         <div key={index} className={`msg msg-${m.type}`}>
           <div className="msg-role" aria-hidden="true">{m.type === 'user' ? 'You' : 'AI'}</div>
           <div className="msg-bubble">
-            <ReactMarkdown>{m.content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {m.content}
+            </ReactMarkdown>
           </div>
           <div className="msg-actions" role="group" aria-label="Message actions">
             <button type="button" aria-label="Copy message" onClick={() => navigator.clipboard.writeText(m.content)}>
@@ -26,7 +33,7 @@ const ChatMessages = ({ messages, isSending }) => {
                 <button type="button" aria-label="Dislike response">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 14V3" /><path d="M9 3h6a2 2 0 0 1 2 2v9l-5 7-1-1a2 2 0 0 1-.5-1.3V15H5a2 2 0 0 1-2-2l2-8a2 2 0 0 1 2-2Z" /></svg>
                 </button>
-                <button type="button" aria-label="Speak message" onClick={() => { try { const u = new SpeechSynthesisUtterance(m.content); speechSynthesis.speak(u);} catch { /* speech synthesis unsupported */ } }}>
+                <button type="button" aria-label="Speak message" onClick={() => { try { const u = new SpeechSynthesisUtterance(m.content); speechSynthesis.speak(u); } catch { /* speech synthesis unsupported */ } }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 8v8" /><path d="M8 4v16" /><path d="M12 2v20" /><path d="M19 5c1.5 2 1.5 12 0 14" /><path d="M16 8c.8 1 1 7 0 8" /></svg>
                 </button>
                 <button type="button" aria-label="Regenerate" onClick={() => { /* placeholder for regenerate logic */ }}>
@@ -41,7 +48,7 @@ const ChatMessages = ({ messages, isSending }) => {
         <div className="msg msg-ai pending">
           <div className="msg-role" aria-hidden="true">AI</div>
           <div className="msg-bubble typing-dots" aria-label="AI is typing">
-            <span/><span/><span/>
+            <span /><span /><span />
           </div>
         </div>
       )}
