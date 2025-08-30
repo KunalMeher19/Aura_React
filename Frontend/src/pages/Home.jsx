@@ -235,6 +235,7 @@ const Home = () => {
             <div className="chip">Early Preview</div>
             <h1>Aura</h1>
             <p>Ask anything. Paste text, brainstorm ideas, or get quick explanations. Your chats stay in the sidebar so you can pick up where you left off.</p>
+            <p>Start by creating a new chat from top.</p>
           </div>
         )}
         <ChatMessages messages={messages} isSending={isSending} />
