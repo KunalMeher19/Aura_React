@@ -42,6 +42,9 @@
     line-height: 1.5;
     word-wrap: break-word;
     font-size: var(--text-sm);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-width: 100%;
 }
 
 /* Markdown Styles */
