@@ -49,6 +49,18 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
               spellCheck
               autoComplete="off"
             />
+            <div className="composer-mode-toggle composer-mode-toggle-inline">
+              <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
+              <button
+                type="button"
+                className={"mode-toggle-switch" + (currentMode === 'thinking' ? ' thinking' : '')}
+                onClick={handleToggle}
+                aria-label={currentMode === 'normal' ? 'Switch to Thinking mode' : 'Switch to Normal mode'}
+              >
+                <span className="toggle-thumb" />
+              </button>
+              <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
+            </div>
             <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
           </div>
           <button
@@ -64,18 +76,6 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
               </svg>
             </span>
           </button>
-          <div className="composer-mode-toggle composer-mode-toggle-inline">
-            <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
-            <button
-              type="button"
-              className={"mode-toggle-switch" + (currentMode === 'thinking' ? ' thinking' : '')}
-              onClick={handleToggle}
-              aria-label={currentMode === 'normal' ? 'Switch to Thinking mode' : 'Switch to Normal mode'}
-            >
-              <span className="toggle-thumb" />
-            </button>
-            <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
-          </div>
         </div>
       </div>
     </form>

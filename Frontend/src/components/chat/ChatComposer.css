@@ -51,11 +51,13 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     width: fit-content;
 }
-.composer-mode-toggle-inline {
-    margin-left: 12px;
+
+.composer-mode-toggle-bottom {
+    margin: 8px 0 0 0;
     display: flex;
+    justify-content: flex-end;
     align-items: center;
-    height: 100%;
+    width: 100%;
 }
 .composer-field-row {
     display: flex;
