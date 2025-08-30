@@ -31,11 +31,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-right: 16px;
     background: var(--color-bg-alt, #232324);
     border-radius: 999px;
     padding: 4px 10px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    width: fit-content;
+}
+.composer-mode-toggle-bottom {
+    margin: 12px auto 0 auto;
+    justify-content: center;
 }
 .mode-label {
     font-size: 13px;
@@ -157,5 +161,7 @@
     .composer-input { padding-bottom:0; }
 }
 
+
 @media (prefers-reduced-motion: reduce) {
     .send-btn.icon-btn, .send-icon svg { transition: none; }
+}
