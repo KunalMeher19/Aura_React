@@ -1,10 +1,5 @@
 /* Send button row below input */
-.composer-send-row {
-    display: flex;
-    justify-content: center;
-    margin-top: 10px;
-    margin-bottom: 0;
-}
+
 
 .composer .send-btn.icon-btn {
     margin: 0;
@@ -56,9 +51,17 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     width: fit-content;
 }
-.composer-mode-toggle-bottom {
-    margin: 12px auto 0 auto;
-    justify-content: center;
+.composer-mode-toggle-inline {
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+.composer-field-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
 }
 .mode-label {
     font-size: 13px;
