@@ -44,16 +44,17 @@
 .composer-mode-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--color-bg-alt, #232324);
+    gap: 4px;
+    background: transparent;
     border-radius: 999px;
-    padding: 4px 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    width: fit-content;
+    padding: 0;
+    box-shadow: none;
+    width: auto;
+    margin-bottom: 2px;
 }
 
 .composer-mode-toggle-top {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -66,17 +67,18 @@
     width: 100%;
 }
 .mode-label {
-    font-size: 13px;
+    font-size: 11px;
     color: var(--color-text-muted, #8d8d91);
     font-weight: 500;
     transition: color .15s;
+    padding: 0 2px;
 }
 .mode-label.active {
     color: var(--color-primary, #3b82f6);
 }
 .mode-toggle-switch {
-    width: 38px;
-    height: 22px;
+    width: 28px;
+    height: 16px;
     background: var(--color-border, #3a3a3c);
     border: none;
     border-radius: 999px;
@@ -84,28 +86,28 @@
     cursor: pointer;
     transition: background .2s;
     outline: none;
-    margin: 0 4px;
+    margin: 0 2px;
     display: flex;
     align-items: center;
     padding: 0;
+    min-width: 28px;
 }
 .mode-toggle-switch .toggle-thumb {
     position: absolute;
-    left: 3px;
-    top: 3px;
-    width: 16px;
-    height: 16px;
+    left: 2px;
+    top: 2px;
+    width: 12px;
+    height: 12px;
     background: var(--color-surface, #fff);
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
     transition: left .2s, background .2s;
 }
 .mode-toggle-switch.thinking {
     background: var(--color-primary, #3b82f6);
 }
-  
 .mode-toggle-switch.thinking .toggle-thumb {
-    left: 19px;
+    left: 14px;
     background: var(--color-primary-hover, #2563eb);
 }
 }
