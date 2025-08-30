@@ -95,7 +95,12 @@ function initSocketServer(httpServer) {
                     }
                 ]
 
-                const response = await aiService.contentGenerator([...ltm, ...stm])
+                                // Switch model if mode is 'thinking' or 'deepthink'
+                                let modelOverride = undefined;
+                                if (messagePayload.mode === 'thinking' || messagePayload.mode === 'deepthink') {
+                                    modelOverride = 'gemini-2.5-flash';
+                                }
+                                const response = await aiService.contentGenerator([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined)
                 
                 // Emit response early
                 socket.emit("ai-response", {
