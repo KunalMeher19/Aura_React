@@ -1,8 +1,20 @@
-import React, { useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useCallback, useRef, useLayoutEffect, useState } from 'react';
 import './ChatComposer.css';
 
 // NOTE: Public API (props) kept identical for drop-in upgrade
-const ChatComposer = ({ input, setInput, onSend, isSending }) => {
+const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onModeChange }) => {
+  // Local state for mode if not controlled
+  const [localMode, setLocalMode] = useState(mode);
+
+  const handleToggle = () => {
+    const newMode = (onModeChange ? (mode === 'normal' ? 'thinking' : 'normal') : (localMode === 'normal' ? 'thinking' : 'normal'));
+    if (onModeChange) {
+      onModeChange(newMode);
+    } else {
+      setLocalMode(newMode);
+    }
+  };
+  const currentMode = onModeChange ? mode : localMode;
   const textareaRef = useRef(null);
 
   // Auto-grow textarea height up to max-height
@@ -23,6 +35,18 @@ const ChatComposer = ({ input, setInput, onSend, isSending }) => {
   return (
     <form className="composer" onSubmit={e => { e.preventDefault(); if (input.trim()) onSend(); }}>
       <div className="composer-surface" data-state={isSending ? 'sending' : undefined}>
+        <div className="composer-mode-toggle">
+          <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
+          <button
+            type="button"
+            className={"mode-toggle-switch" + (currentMode === 'thinking' ? ' thinking' : '')}
+            onClick={handleToggle}
+            aria-label={currentMode === 'normal' ? 'Switch to Thinking mode' : 'Switch to Normal mode'}
+          >
+            <span className="toggle-thumb" />
+          </button>
+          <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
+        </div>
         <div className="composer-field">
           <textarea
             ref={textareaRef}

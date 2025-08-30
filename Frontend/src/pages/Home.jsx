@@ -47,6 +47,7 @@ const Home = () => {
   const [socket, setSocket] = useState(null);
   const [isNewChatPopupOpen, setIsNewChatPopupOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [composerMode, setComposerMode] = useState('normal');
 
   useEffect(() => {
     // Handle window resize
@@ -142,7 +143,8 @@ const Home = () => {
 
     const newMessages = [...messages, {
       type: 'user',
-      content: trimmed
+      content: trimmed,
+      mode: composerMode
     }];
 
     try {
@@ -151,7 +153,8 @@ const Home = () => {
 
       socket.emit("ai-message", {
         chat: activeChatId,
-        content: trimmed
+        content: trimmed,
+        mode: composerMode
       });
 
       // Auto-close sidebar on mobile after sending message
@@ -242,6 +245,8 @@ const Home = () => {
             setInput={(v) => dispatch(setInput(v))}
             onSend={sendMessage}
             isSending={isSending}
+            mode={composerMode}
+            onModeChange={setComposerMode}
           />}
       </main>
       {sidebarOpen && (
