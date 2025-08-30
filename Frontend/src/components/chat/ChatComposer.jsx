@@ -37,20 +37,20 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
       <div className="composer-surface" data-state={isSending ? 'sending' : undefined}>
         {/* Input row */}
         <div className="composer-field-row">
-          {/* Toggle row above input */}
-          <div className="composer-mode-toggle composer-mode-toggle-top">
-            <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
-            <button
-              type="button"
-              className={"mode-toggle-switch" + (currentMode === 'thinking' ? ' thinking' : '')}
-              onClick={handleToggle}
-              aria-label={currentMode === 'normal' ? 'Switch to Thinking mode' : 'Switch to Normal mode'}
-            >
-              <span className="toggle-thumb" />
-            </button>
-            <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
-          </div>
           <div className="composer-field">
+            {/* Toggle row above input */}
+            <div className="composer-mode-toggle composer-mode-toggle-top">
+              <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
+              <button
+                type="button"
+                className={"mode-toggle-switch" + (currentMode === 'thinking' ? ' thinking' : '')}
+                onClick={handleToggle}
+                aria-label={currentMode === 'normal' ? 'Switch to Thinking mode' : 'Switch to Normal mode'}
+              >
+                <span className="toggle-thumb" />
+              </button>
+              <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
+            </div>
             <textarea
               ref={textareaRef}
               className="composer-input"
