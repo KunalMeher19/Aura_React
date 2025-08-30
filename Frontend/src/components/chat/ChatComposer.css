@@ -1,3 +1,22 @@
+/* Send button row below input */
+.composer-send-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+.composer .send-btn.icon-btn {
+    margin: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    background: linear-gradient(180deg, #353537 80%, #232324 100%);
+    border: 1.5px solid #353537;
+    transition: box-shadow .15s, background .15s, border .15s;
+}
+
+.composer .send-btn.icon-btn:focus-visible {
+    box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(0,0,0,0.10);
+}
 /* === ChatGPT-like bottom composer === */
 /* Centered, max-width column, floating pill with subtle border */
 

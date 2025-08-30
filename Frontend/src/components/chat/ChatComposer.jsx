@@ -50,6 +50,8 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
           />
           <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
         </div>
+      </div>
+      <div className="composer-send-row">
         <button
           type="submit"
           className="send-btn icon-btn"
