@@ -52,8 +52,8 @@
     width: fit-content;
 }
 
-.composer-mode-toggle-bottom {
-    margin: 8px 0 0 0;
+.composer-mode-toggle-top {
+    margin-bottom: 4px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
