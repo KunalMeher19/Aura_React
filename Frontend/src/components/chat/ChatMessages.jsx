@@ -8,12 +8,28 @@ import './ChatMessages.css';
 
 const ChatMessages = ({ messages, isSending }) => {
   const lastMessageRef = useRef(null);
+  const containerRef = useRef(null);
+
   useEffect(() => {
-    // Scroll the newest message so its top aligns with the container's top
-    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const el = lastMessageRef.current;
+    const container = containerRef.current;
+    if (!el) return;
+
+    // Use bounding rects to compute the position of the element relative to the container.
+    // This works even if the element's offsetParent isn't the container.
+    if (container) {
+      const elRect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const top = elRect.top - containerRect.top + container.scrollTop;
+      container.scrollTo({ top, behavior: 'smooth' });
+      return;
+    }
+
+    // Fallback to scrollIntoView
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [messages.length, isSending]);
   return (
-    <div className="messages" aria-live="polite">
+  <div className="messages" ref={containerRef} aria-live="polite">
       {messages.map((m, index) => (
         <div
           key={index}
