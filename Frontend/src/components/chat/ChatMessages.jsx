@@ -7,12 +7,19 @@ import './ChatMessages.css';
 
 
 const ChatMessages = ({ messages, isSending }) => {
-  const bottomRef = useRef(null);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, isSending]);
+  const lastMessageRef = useRef(null);
+  useEffect(() => {
+    // Scroll the newest message so its top aligns with the container's top
+    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [messages.length, isSending]);
   return (
     <div className="messages" aria-live="polite">
       {messages.map((m, index) => (
-        <div key={index} className={`msg msg-${m.type}`}>
+        <div
+          key={index}
+          ref={index === messages.length - 1 ? lastMessageRef : undefined}
+          className={`msg msg-${m.type}`}
+        >
           <div className="msg-role" aria-hidden="true">{m.type === 'user' ? 'You' : 'AI'}</div>
           <div className="msg-bubble">
             <ReactMarkdown
@@ -46,14 +53,14 @@ const ChatMessages = ({ messages, isSending }) => {
         </div>
       ))}
       {isSending && (
-        <div className="msg msg-ai pending">
+        <div className="msg msg-ai pending" ref={lastMessageRef}>
           <div className="msg-role" aria-hidden="true">AI</div>
           <div className="msg-bubble typing-dots" aria-label="AI is typing">
             <span /><span /><span />
           </div>
         </div>
       )}
-      <div ref={bottomRef} />
+      {/* sentinel removed; scrolling now targets the newest message element */}
     </div>
   );
 };
