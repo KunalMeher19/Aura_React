@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -10,23 +10,41 @@ const ChatMessages = ({ messages, isSending }) => {
   const lastMessageRef = useRef(null);
   const containerRef = useRef(null);
 
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
   useEffect(() => {
     const el = lastMessageRef.current;
     const container = containerRef.current;
-    if (!el) return;
+    if (!el || !container) return;
 
-    // Use bounding rects to compute the position of the element relative to the container.
-    // This works even if the element's offsetParent isn't the container.
-    if (container) {
+    // Try bounding rect calculation first
+    try {
       const elRect = el.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      const top = elRect.top - containerRect.top + container.scrollTop;
+      // Account for container's current scrollTop and padding
+      const style = window.getComputedStyle(container);
+      const paddingTop = parseFloat(style.paddingTop || '0');
+      let top = elRect.top - containerRect.top + container.scrollTop - paddingTop;
+      if (!Number.isFinite(top)) throw new Error('invalid top');
+
+      // Cap to valid scroll range
+      top = Math.max(0, Math.min(top, container.scrollHeight - container.clientHeight));
       container.scrollTo({ top, behavior: 'smooth' });
       return;
+  } catch {
+      // fallback to walking offsetTop chain: more robust if transformed ancestors exist
+      let top = 0;
+      let node = el;
+      while (node && node !== container && node.offsetTop != null) {
+        top += node.offsetTop;
+        node = node.offsetParent;
+      }
+      // subtract container's padding
+      const style = window.getComputedStyle(container);
+      const paddingTop = parseFloat(style.paddingTop || '0');
+      top = Math.max(0, top - paddingTop);
+      container.scrollTo({ top, behavior: 'smooth' });
     }
-
-    // Fallback to scrollIntoView
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [messages.length, isSending]);
   return (
   <div className="messages" ref={containerRef} aria-live="polite">
@@ -46,9 +64,43 @@ const ChatMessages = ({ messages, isSending }) => {
             </ReactMarkdown>
           </div>
           <div className="msg-actions" role="group" aria-label="Message actions">
-            <button type="button" aria-label="Copy message" onClick={() => navigator.clipboard.writeText(m.content)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-            </button>
+            <div style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                type="button"
+                aria-label="Copy message"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(m.content);
+                    setCopiedIndex(index);
+                    setTimeout(() => setCopiedIndex(null), 1400);
+                  } catch {
+                    // ignore clipboard errors for now
+                  }
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+              </button>
+              {copiedIndex === index && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 6px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: '#111',
+                    color: '#fff',
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    fontSize: '0.75rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  Copied
+                </div>
+              )}
+            </div>
             {m.role === 'ai' && (
               <>
                 <button type="button" aria-label="Like response">
