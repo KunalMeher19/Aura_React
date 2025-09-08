@@ -11,8 +11,8 @@ export default defineConfig({
         name: "Aura (AI Chatbot)",
         short_name: "Aura",
         description: "An AI Chatbot to give deepthinking answers to your questions.",
-        theme_color: "#15141f",
-        background_color: "#15141f",
+        theme_color: "#16161f",
+        background_color: "#16161f",
         icons: [
           {
             "src": "icons/icon-48x48.png",
