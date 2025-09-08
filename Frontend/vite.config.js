@@ -12,7 +12,7 @@ export default defineConfig({
         short_name: "Aura",
         description: "An AI Chatbot to give deepthinking answers to your questions.",
         theme_color: "#16161f",        // top color
-        background_color: "#12131b",   // bottom color (solid fallback for splash)
+        background_color: "#16161f",   // bottom color (solid fallback for splash)
         icons: [
           { src: "icons/icon-48x48.png", sizes: "48x48", type: "image/png" },
           { src: "icons/icon-72x72.png", sizes: "72x72", type: "image/png" },
