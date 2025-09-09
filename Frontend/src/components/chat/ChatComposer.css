@@ -120,8 +120,15 @@
 
 .composer-field { flex: 1; position: relative; }
 
+.composer-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .composer-input {
-    width: 100%;
+    flex: 1 1 auto; /* grow to fill available space */
+    min-width: 0; /* allow flex children to shrink properly */
     resize: none;
     border: 0;
     outline: none;
@@ -187,6 +194,35 @@
     margin-right: 6px;
 }
 .attach-icon { font-size: 18px; line-height: 1; }
+
+/* Attach menu popup */
+.attach-container { position: relative; display: inline-block; }
+.attach-menu {
+    position: absolute;
+    bottom: 48px;
+    left: 0;
+    min-width: 160px;
+    background: #161616;
+    border: 1px solid #2f2f30;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    padding: 6px;
+    z-index: 40;
+}
+.attach-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    color: #eaeaea;
+    cursor: pointer;
+    font-weight: 600;
+    border-radius: 8px;
+}
+.attach-menu-item:hover { background: rgba(255,255,255,0.04); }
+
 
 .composer-image-preview {
     display: inline-flex;

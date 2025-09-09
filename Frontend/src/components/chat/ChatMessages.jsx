@@ -60,8 +60,14 @@ const ChatMessages = ({ messages, isSending }) => {
           <div className="msg-bubble">
               {/* If message has image or imageData, render image first */}
               {m.image || m.imageData ? (
-                <div className="msg-image">
+                <div className="msg-image" style={{ position: 'relative' }}>
                   <img src={m.image || m.imageData} alt="uploaded" onClick={() => setModal({ open: true, src: (m.image || m.imageData), caption: m.prompt || m.content })} />
+                  {typeof m.uploadProgress === 'number' && m.uploadProgress > 0 && m.uploadProgress < 100 && (
+                    <div className="msg-upload-overlay" aria-hidden>
+                      <div className="msg-upload-bar" style={{ width: `${m.uploadProgress}%` }} />
+                      <div className="msg-upload-text">{m.uploadProgress}%</div>
+                    </div>
+                  )}
                 </div>
               ) : null}
               <ReactMarkdown

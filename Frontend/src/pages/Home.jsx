@@ -132,23 +132,63 @@ const Home = () => {
   const sendMessage = async (maybeUpload) => {
     // Handle image preview payload from composer (immediate local preview)
     if (maybeUpload && maybeUpload.isUploadPreview) {
-      const previewMsg = { type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData };
+      // create a stable local id so we can update this message during upload
+      const previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const previewMsg = { id: previewId, type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt, preview: true, uploadProgress: 0 };
       setMessages(prev => [...prev, previewMsg]);
       return;
     }
 
-    // Handle final upload result from backend
-    if (maybeUpload && maybeUpload.isUpload) {
-      // If no preview exists in current messages, append a user message with the image and prompt
-      const hasPreview = messages.some(m => m.imageData || m.image);
-      if (!hasPreview) {
-        setMessages(prev => [...prev, { type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt }]);
+    // If composer provided a File to upload (final send), upload it now with the prompt
+    if (maybeUpload && maybeUpload.file) {
+      if (!activeChatId || isSending) return;
+
+      // Find the preview message we created earlier (match by imageData or prompt and preview flag)
+      let previewId = null;
+      const found = messages.find(m => m.preview && (m.imageData === maybeUpload.imageData || m.prompt === maybeUpload.prompt));
+      if (found && found.id) previewId = found.id;
+
+      // If no preview found, create one so UI shows an image bubble immediately
+      if (!previewId) {
+        previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        const previewMsg = { id: previewId, type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt, preview: true, uploadProgress: 0 };
+        setMessages(prev => [...prev, previewMsg]);
       }
-      // Append AI response
-      setMessages(prev => [...prev, { type: 'ai', content: maybeUpload.ai }]);
+
+      dispatch(sendingStarted());
+
+      try {
+        const form = new FormData();
+        form.append('file', maybeUpload.file);
+        form.append('prompt', maybeUpload.prompt || '');
+        form.append('chat', activeChatId);
+        form.append('mode', composerMode || 'normal');
+
+        const resp = await axios.post('/api/chat/upload', form, {
+          withCredentials: true,
+          onUploadProgress: (ev) => {
+            if (!ev.lengthComputable) return;
+            const percent = Math.round((ev.loaded / ev.total) * 100);
+            setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: percent } : m));
+          }
+        });
+
+        if (resp && resp.data) {
+          // replace the preview's imageData with server-provided image (if available), clear uploadProgress and preview flag
+          setMessages(prev => prev.map(m => m.id === previewId ? { ...m, image: resp.data.imageData || m.imageData, imageData: undefined, uploadProgress: 0, preview: false } : m));
+          // Append AI response from server
+          setMessages(prev => [...prev, { type: 'ai', content: resp.data.ai }]);
+        }
+      } catch {
+        toast.error('Failed to upload image');
+        // mark preview as errored (set uploadProgress to 0 and preview false to allow retry)
+        setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 0, preview: false, uploadError: true } : m));
+      } finally {
+        dispatch(sendingFinished());
+      }
       return;
     }
-    
+
     const trimmed = input.trim();
     if (!trimmed || !activeChatId || isSending) return;
 

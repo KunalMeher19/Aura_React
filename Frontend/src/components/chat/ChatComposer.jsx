@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useRef, useLayoutEffect, useState, useEffect } from 'react';
 import './ChatComposer.css';
 
 // NOTE: Public API (props) kept identical for drop-in upgrade
@@ -16,9 +16,12 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
   };
   const currentMode = onModeChange ? mode : localMode;
   const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const attachMenuRef = useRef(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Auto-grow textarea height up to max-height
   useLayoutEffect(() => {
@@ -31,102 +34,74 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim()) onSend();
+      // allow sending when text or an attached image exists
+      if ((typeof input === 'string' && input.trim()) || previewSrc) {
+        // when previewSrc exists, include selectedFile if present
+        if (previewSrc && selectedFile) {
+          onSend && onSend({ file: selectedFile, imageData: previewSrc, prompt: (typeof input === 'string' ? input : '') });
+          setPreviewSrc(null);
+          setSelectedFile(null);
+        } else {
+          onSend && onSend();
+        }
+      }
     }
-  }, [onSend, input]);
+  }, [onSend, input, previewSrc, selectedFile]);
+
+  // Close attach menu when clicking outside
+  useEffect(() => {
+    const onDocClick = (ev) => {
+      if (!attachMenuRef.current) return;
+      if (!attachMenuRef.current.contains(ev.target)) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
+
+  // Shared handler for file inputs (camera or gallery)
+  const handleFileChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      // Only generate a local preview and keep the File. Do not auto-upload.
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        setPreviewSrc(dataUrl);
+        setSelectedFile(file);
+        if (onSend) onSend({ isUploadPreview: true, imageData: dataUrl, prompt: (typeof input === 'string' ? input : '') });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      e.target.value = '';
+    }
+  };
 
   return (
-    <form className="composer" onSubmit={e => { e.preventDefault(); if (input.trim()) onSend(); }}>
+    <form className="composer" onSubmit={e => { 
+      e.preventDefault();
+      // if there's an attached file, send it along with the prompt
+      if (previewSrc && selectedFile) {
+        onSend && onSend({ file: selectedFile, imageData: previewSrc, prompt: (typeof input === 'string' ? input : '') });
+        setPreviewSrc(null);
+        setSelectedFile(null);
+        return;
+      }
+      if ((typeof input === 'string' && input.trim())) onSend && onSend();
+    }}>
       <div className="composer-surface" data-state={isSending ? 'sending' : undefined}>
         {/* Input row */}
         <div className="composer-field-row">
-            <div className="composer-field">
+          <div className="composer-field">
             {/* Inline preview when an image is selected */}
             {previewSrc && (
               <div className="composer-image-preview" role="img" aria-label="Image preview">
                 <img src={previewSrc} alt="preview" />
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="upload-progress-overlay" aria-hidden>
-                    <div className="upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
-                    <div className="upload-progress-text">{uploadProgress}%</div>
-                  </div>
-                )}
-                <button type="button" aria-label="Remove image" onClick={() => { setPreviewSrc(null); setUploadProgress(0); }}>✕</button>
+                <button type="button" aria-label="Remove image" onClick={() => { setPreviewSrc(null); setSelectedFile(null); }}>✕</button>
               </div>
             )}
-            {/* Attach / Camera button */}
-            <button
-              type="button"
-              className="attach-btn icon-btn"
-              aria-label="Attach image"
-              onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            >
-              <span className="attach-icon" aria-hidden="true">+</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: 'none' }}
-              onChange={async (e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                try {
-                  const form = new FormData();
-                  // Attach file and include the current prompt text
-                  form.append('file', file);
-                  form.append('prompt', (typeof input === 'string' ? input : ''));
-                  // If parent passed a chat id via onSend wrapper, it should handle; else include chat from dataset
-                  const chatEl = document.querySelector('[data-active-chat]');
-                  if (chatEl) form.append('chat', chatEl.getAttribute('data-active-chat'));
-
-                  // Create a local preview (object URL) and immediately show it
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const dataUrl = reader.result;
-                    setPreviewSrc(dataUrl);
-                    // Inform parent to immediately append preview message
-                    if (onSend) onSend({ isUploadPreview: true, imageData: dataUrl, prompt: (typeof input === 'string' ? input : '') });
-                  };
-                  reader.readAsDataURL(file);
-
-                  // Use XHR to report upload progress
-                  await new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/api/chat/upload');
-                    xhr.withCredentials = true;
-                    xhr.upload.onprogress = (ev) => {
-                      if (ev.lengthComputable) {
-                        setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-                      }
-                    };
-                    xhr.onload = () => {
-                      try {
-                        const data = JSON.parse(xhr.responseText || '{}');
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                          setUploadProgress(100);
-                          setPreviewSrc(null);
-                          setUploadProgress(0);
-                          if (onSend) onSend({ isUpload: true, imageData: data.imageData, ai: data.ai, prompt: (typeof input === 'string' ? input : '') });
-                          resolve();
-                        } else {
-                          console.error('Upload failed', data);
-                          reject(new Error(data.message || 'Upload failed'));
-                        }
-                      } catch (e) {
-                        reject(e);
-                      }
-                    };
-                    xhr.onerror = () => reject(new Error('Network error'));
-                    xhr.send(form);
-                  });
-                } finally {
-                  // reset input so same file can be picked again
-                  e.target.value = '';
-                }
-              }}
-            />
             {/* Toggle row above input */}
             <div className="composer-mode-toggle composer-mode-toggle-top">
               <span className={"mode-label" + (currentMode === 'normal' ? ' active' : '')}>Normal</span>
@@ -140,24 +115,73 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
               </button>
               <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
             </div>
-            <textarea
-              ref={textareaRef}
-              className="composer-input"
-              placeholder="Message Aura…"
-              aria-label="Message"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              spellCheck
-              autoComplete="off"
-            />
+            <div className='composer-input-row'>
+              {/* Attach / Camera button */}
+              <div className="attach-container" ref={attachMenuRef}>
+                <button
+                  type="button"
+                  className="attach-btn icon-btn"
+                  aria-label="Attach image"
+                  aria-haspopup="true"
+                  aria-expanded={attachMenuOpen}
+                  onClick={() => setAttachMenuOpen(v => !v)}
+                >
+                  <span className="attach-icon" aria-hidden="true">+</span>
+                </button>
+
+                {/* Popup menu with two options: take photo or upload from gallery */}
+                {attachMenuOpen && (
+                  <div className="attach-menu" role="menu" aria-label="Attachment options">
+                    <button type="button" role="menuitem" className="attach-menu-item" onClick={() => { setAttachMenuOpen(false); cameraInputRef.current && cameraInputRef.current.click(); }}>
+                      Take photo
+                    </button>
+                    <button type="button" role="menuitem" className="attach-menu-item" onClick={() => { setAttachMenuOpen(false); galleryInputRef.current && galleryInputRef.current.click(); }}>
+                      Upload from gallery
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Hidden inputs: camera (with capture) and gallery (no capture) */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  await handleFileChange(e);
+                }}
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  await handleFileChange(e);
+                }}
+              />
+              <textarea
+                ref={textareaRef}
+                className="composer-input"
+                placeholder="Message Aura…"
+                aria-label="Message"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+                spellCheck
+                autoComplete="off"
+              />
+            </div>
             <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
           </div>
           <button
             type="submit"
             className="send-btn icon-btn"
-            disabled={!input.trim() || isSending}
+            // allow sending when there is either text or an attached image
+            disabled={!( (typeof input === 'string' && input.trim()) || previewSrc ) || isSending}
             aria-label={isSending ? 'Sending…' : 'Send message'}
           >
             <span className="send-icon" aria-hidden="true">
