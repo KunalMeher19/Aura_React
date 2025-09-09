@@ -126,6 +126,14 @@
     gap: 8px;
 }
 
+/* wrapper so hint can flow beneath the textarea without absolute positioning conflicts */
+.input-with-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+}
+
 .composer-input {
     flex: 1 1 auto; /* grow to fill available space */
     min-width: 0; /* allow flex children to shrink properly */
@@ -137,22 +145,21 @@
     font: inherit;
     line-height: 1.5;
     max-height: 260px;
-    padding: 0 0 18px 0; /* space for hint overlay */
+    padding: 0; /* hint no longer needs overlay padding */
 }
 
 .composer-input::placeholder { color: #8d8d91; }
 
 .composer-hint {
-    position: absolute;
-    padding-left: 15px;
-    left: 2px;
-    bottom: 2px;
+    margin-top: 6px;
+    padding-left: 6px;
     font-size: 11px;
     color: #5f6165;
     pointer-events: none;
     user-select: none;
     line-height: 1.1;
     font-weight: 500;
+    align-self: flex-start; /* ensure it hugs the left edge of the textarea */
 }
 
 /* Icon-only circular send button */

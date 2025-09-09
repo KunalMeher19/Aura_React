@@ -108,11 +108,24 @@ const Home = () => {
     });
 
     tempSocket.on("ai-response", (messagePayload) => {
-      /* if (messagePayload.chat !== activeChatId) { dispatch(sendingFinished()); return; }; */
+      // If server echoes a previewId and/or imageData, update the corresponding preview message
+      if (messagePayload.previewId) {
+        setMessages(prev => prev.map(m => m.id === messagePayload.previewId ? {
+          ...m,
+          image: messagePayload.imageData || m.imageData,
+          imageData: undefined,
+          uploadProgress: 0,
+          preview: false
+        } : m));
+      }
+
+      // Append AI response content
       setMessages((prevMessages) => [...prevMessages, {
         type: 'ai',
         content: messagePayload.content
       }]);
+
+      // clear any sending state
       dispatch(sendingFinished());
     });
 
@@ -133,7 +146,7 @@ const Home = () => {
     // Handle image preview payload from composer (immediate local preview)
     if (maybeUpload && maybeUpload.isUploadPreview) {
       // create a stable local id so we can update this message during upload
-      const previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const previewMsg = { id: previewId, type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt, preview: true, uploadProgress: 0 };
       setMessages(prev => [...prev, previewMsg]);
       return;
@@ -143,51 +156,65 @@ const Home = () => {
     if (maybeUpload && maybeUpload.file) {
       if (!activeChatId || isSending) return;
 
-      // Find the preview message we created earlier (match by imageData or prompt and preview flag)
+      // Find or create preview message
       let previewId = null;
       const found = messages.find(m => m.preview && (m.imageData === maybeUpload.imageData || m.prompt === maybeUpload.prompt));
       if (found && found.id) previewId = found.id;
 
-      // If no preview found, create one so UI shows an image bubble immediately
       if (!previewId) {
-        previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        previewId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const previewMsg = { id: previewId, type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt, preview: true, uploadProgress: 0 };
         setMessages(prev => [...prev, previewMsg]);
       }
 
-  dispatch(sendingStarted());
-  // clear composer input immediately when sending an image+prompt
-  dispatch(setInput(''));
+      dispatch(sendingStarted());
+      dispatch(setInput(''));
 
       try {
-        const form = new FormData();
-        form.append('file', maybeUpload.file);
-        form.append('prompt', maybeUpload.prompt || '');
-        form.append('chat', activeChatId);
-        form.append('mode', composerMode || 'normal');
+        // Convert file to data URL (base64) and emit through socket
+        const file = maybeUpload.file;
+        const reader = new FileReader();
 
-        const resp = await axios.post('/api/chat/upload', form, {
-          withCredentials: true,
-          onUploadProgress: (ev) => {
-            if (!ev.lengthComputable) return;
-            const percent = Math.round((ev.loaded / ev.total) * 100);
-            setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: percent } : m));
-          }
+        // Simulate upload progress locally while reading/converting
+        let progress = 0;
+        const progInterval = setInterval(() => {
+          progress = Math.min(95, progress + Math.floor(Math.random() * 10) + 5);
+          setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: progress } : m));
+        }, 200);
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          reader.onerror = () => {
+            clearInterval(progInterval);
+            reject(new Error('Failed to read file'));
+          };
+          reader.onload = () => {
+            clearInterval(progInterval);
+            resolve(reader.result);
+          };
+          reader.readAsDataURL(file);
         });
 
-        if (resp && resp.data) {
-          // replace the preview's imageData with server-provided image (if available), clear uploadProgress and preview flag
-          setMessages(prev => prev.map(m => m.id === previewId ? { ...m, image: resp.data.imageData || m.imageData, imageData: undefined, uploadProgress: 0, preview: false } : m));
-          // Append AI response from server
-          setMessages(prev => [...prev, { type: 'ai', content: resp.data.ai }]);
-        }
+        // Finalize progress to 100% locally
+        setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 100 } : m));
+
+        // Send over socket as image payload. Include previewId so server can correlate.
+        if (!socket?.connected) throw new Error('Not connected to socket');
+
+        socket.emit('ai-message', {
+          chat: activeChatId,
+          content: maybeUpload.prompt || '',
+          mode: composerMode,
+          image: dataUrl,
+          previewId
+        });
+
+        // Let server respond via ai-response handler which will clear preview
       } catch {
-        toast.error('Failed to upload image');
-        // mark preview as errored (set uploadProgress to 0 and preview false to allow retry)
+        toast.error('Failed to send image');
         setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 0, preview: false, uploadError: true } : m));
-      } finally {
         dispatch(sendingFinished());
       }
+
       return;
     }
 
@@ -211,7 +238,7 @@ const Home = () => {
       setMessages(newMessages);
       dispatch(setInput(''));
 
-  socket.emit("ai-message", {
+      socket.emit("ai-message", {
         chat: activeChatId,
         content: trimmed,
         mode: composerMode
@@ -249,8 +276,8 @@ const Home = () => {
       setMessages(response.data.messages.map(m => ({
         type: m.role === 'user' ? 'user' : 'ai',
         content: m.content,
-  image: m.image || undefined,
-  prompt: m.prompt || undefined
+        image: m.image || undefined,
+        prompt: m.prompt || undefined
       })));
     } catch {
       toast.error('Failed to fetch messages');

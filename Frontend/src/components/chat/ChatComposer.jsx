@@ -162,20 +162,22 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
                   await handleFileChange(e);
                 }}
               />
-              <textarea
-                ref={textareaRef}
-                className="composer-input"
-                placeholder="Message Aura…"
-                aria-label="Message"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                spellCheck
-                autoComplete="off"
-              />
+              <div className="input-with-hint">
+                <textarea
+                  ref={textareaRef}
+                  className="composer-input"
+                  placeholder="Message Aura…"
+                  aria-label="Message"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  spellCheck
+                  autoComplete="off"
+                />
+                <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
+              </div>
             </div>
-            <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
           </div>
           <button
             type="submit"

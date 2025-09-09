@@ -2,14 +2,37 @@ const { GoogleGenAI } = require('@google/genai');
 
 const ai = new GoogleGenAI({});
 
-async function contentGenerator(content, opts = {}) {
+async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     const modelName = opts.model || "gemini-2.0-flash";
+    // Accept either a raw base64 string or a data-URI like "data:image/png;base64,..."
+    let mimeTypeDetected;
+    let base64Data = base64ImageFile;
+
+    // If it's a data URI, extract the mime type and raw base64 payload
+    const dataUriMatch = String(base64ImageFile).match(/^data:(image\/[a-zA-Z+.-]+);base64,(.*)$/);
+    if (dataUriMatch) {
+        mimeTypeDetected = dataUriMatch[1];
+        base64Data = dataUriMatch[2];
+    }
+
+    // Allow caller override via opts.mimeType, otherwise use detected or default to jpeg
+    const mimeType = opts.mimeType || mimeTypeDetected || 'image/jpeg';
+
+    const contents = [
+        {
+            inlineData: {
+                mimeType,
+                data: base64Data, // raw base64 (no "data:...;base64," prefix)
+            },
+        },
+        { text: userPrompt },
+    ];
     try {
         const response = await ai.models.generateContent({
             model: modelName,
-            contents: content,
+            contents: contents,
             config: {
-                temperature: 0.7,
+                temperature: 0.8,
                 systemInstruction: `
             <persona> 
                 <name>Aura</name> 
