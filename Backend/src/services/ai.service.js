@@ -44,7 +44,7 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
                 parts: [{ text: userPrompt }]
             }
         ];
-    }
+    }   
     try {
         const response = await ai.models.generateContent({
             model: modelName,
