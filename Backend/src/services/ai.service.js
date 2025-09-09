@@ -31,14 +31,15 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
                 data: base64Data, // raw base64 (no "data:...;base64," prefix)
             },
         });
+        parts.push({ text: userPrompt });
     }
-    parts.push({ text: userPrompt });
+
 
     const contents = [ { parts } ];
     try {
         const response = await ai.models.generateContent({
             model: modelName,
-            contents: contents,
+            contents: base64Data ? contents : userPrompt,
             config: {
                 temperature: 0.8,
                 systemInstruction: `
