@@ -3,6 +3,7 @@ const cookie = require('cookie')
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model')
 const aiService = require('../services/ai.service');
+const uploadFile = require('../services/storage.service');
 const messageModel = require('../models/message.model')
 const { createMemory, queryMemory } = require('../services/vector.service');
 
@@ -45,25 +46,43 @@ function initSocketServer(httpServer) {
                     const chatId = messagePayload.chat;
                     const userPrompt = messagePayload.content || '';
 
-                    // Extract base64 part from data URL if present
-                    let base64ImageFile = messagePayload.image;
-                    if (base64ImageFile.startsWith('data:')) {
-                        const parts = base64ImageFile.split(',');
-                        base64ImageFile = parts[1] || base64ImageFile;
+                    // Keep original data URI (if present) for AI processing, but do not store it in DB.
+                    const originalData = messagePayload.image;
+
+                    // Determine an extension from data URI if possible for filename
+                    let ext = 'jpg';
+                    const mimeMatch = String(originalData).match(/^data:(image\/[^;]+);base64,/);
+                    if (mimeMatch) {
+                        const mime = mimeMatch[1];
+                        const parts = mime.split('/');
+                        if (parts[1]) ext = parts[1].replace('+', '');
                     }
 
-                    // Save user message with image and prompt
+                    const fileName = `user_upload_${Date.now()}.${ext}`;
+
+                    // Upload to ImageKit using storage.service. This returns an object containing the hosted URL.
+                    let uploadResp;
+                    try {
+                        uploadResp = await uploadFile(originalData, fileName);
+                    } catch (err) {
+                        console.error('Image upload failed:', err && (err.message || err));
+                        throw new Error('Image upload failed');
+                    }
+
+                    const hostedUrl = uploadResp && (uploadResp.url || uploadResp.filePath || uploadResp.name) ? (uploadResp.url || uploadResp.filePath || uploadResp.name) : null;
+
+                    // Save user message with uploaded image URL (do not store base64)
                     const userMessage = await messageModel.create({
                         user: socket.user._id,
                         chat: chatId,
                         content: userPrompt ? `User uploaded image with prompt: ${userPrompt}` : 'User uploaded image',
-                        image: messagePayload.image,
+                        image: hostedUrl || undefined,
                         prompt: userPrompt,
                         role: 'user'
                     });
 
-                    // Call AI service with image base64 and prompt
-                    const aiResponse = await aiService.contentGenerator(base64ImageFile, userPrompt);
+                    // Call AI service with the original data (data URI or base64) so model can process the image
+                    const aiResponse = await aiService.contentGenerator(originalData, userPrompt);
 
                     // Save AI response
                     const aiMessage = await messageModel.create({
@@ -86,13 +105,14 @@ function initSocketServer(httpServer) {
                         console.warn('Embedding generation failed for uploaded image flow', e && (e.message || e));
                     }
 
-                    // Emit ai-response including previewId and imageData so client can finalize preview
+                    // Emit ai-response including previewId and hosted image URL so client can finalize preview bubble
                     const respPayload = {
                         content: aiResponse,
                         chat: chatId
                     };
                     if (messagePayload.previewId) respPayload.previewId = messagePayload.previewId;
-                    respPayload.imageData = messagePayload.image;
+                    // Provide the client the hosted URL for the final image
+                    if (hostedUrl) respPayload.imageData = hostedUrl;
 
                     socket.emit('ai-response', respPayload);
 
