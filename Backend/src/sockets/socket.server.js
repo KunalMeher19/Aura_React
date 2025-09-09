@@ -151,10 +151,10 @@ function initSocketServer(httpServer) {
         // Text-only messages (backwards-compatible). If an image slips in, route to image handler.
         socket.on("ai-message", async (messagePayload) => {
             try {
-                if (messagePayload && messagePayload.image) {
+                /* if (messagePayload && messagePayload.image) {
                     await processImagePayload(messagePayload);
                     return;
-                }
+                } */
 
                 const [message, vectors] = await Promise.all([
                     messageModel.create({
