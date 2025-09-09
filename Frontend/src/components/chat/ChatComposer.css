@@ -171,6 +171,70 @@
 
 .send-icon { display:inline-flex; }
 
+/* Attach / camera button */
+.attach-btn.icon-btn {
+    --size: 36px;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid #3a3a3c;
+    color: #f1f1f2;
+    cursor: pointer;
+    margin-right: 6px;
+}
+.attach-icon { font-size: 18px; line-height: 1; }
+
+.composer-image-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 8px;
+}
+.composer-image-preview img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.composer-image-preview button {
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.upload-progress-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
+    border-radius: 8px;
+}
+.upload-progress-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    background: var(--color-primary, #3b82f6);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+.upload-progress-text {
+    color: #fff;
+    font-weight: 600;
+    z-index: 2;
+}
+
 /* Slide arrow a tad */
 .send-btn.icon-btn:hover:not(:disabled) .send-icon { transform: translateX(1px); }
 .send-icon svg { transition: transform .15s; }

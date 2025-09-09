@@ -62,9 +62,6 @@ const Home = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const activeChat = chats.find(c => c.id === activeChatId) || null;
-
-
   const handleNewChat = () => {
     setIsNewChatPopupOpen(true);
   }
@@ -80,10 +77,12 @@ const Home = () => {
       dispatch(startNewChat(response.data.chat));
       setSidebarOpen(false);
       toast.success('New chat created successfully!');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create new chat');
+    } catch {
+      toast.error('Failed to create new chat');
     }
   }
+
+  const _activeChat = chats.find(c => c.id === activeChatId) || null;
 
   useEffect(() => {
     // Fetch chats
@@ -91,8 +90,8 @@ const Home = () => {
       .then(response => {
         dispatch(setChats(response.data.chats.reverse()));
       })
-      .catch(error => {
-        toast.error(error.response?.data?.message || 'Failed to load chats');
+      .catch(() => {
+        toast.error('Failed to load chats');
       });
 
     // Setup socket
@@ -117,8 +116,8 @@ const Home = () => {
       dispatch(sendingFinished());
     });
 
-    tempSocket.on("error", (error) => {
-      toast.error(error.message || 'An error occurred with the chat');
+    tempSocket.on("error", (err) => {
+      toast.error(err.message || 'An error occurred with the chat');
       dispatch(sendingFinished());
     });
 
@@ -130,7 +129,26 @@ const Home = () => {
     };
   }, [dispatch]);
 
-  const sendMessage = async () => {
+  const sendMessage = async (maybeUpload) => {
+    // Handle image preview payload from composer (immediate local preview)
+    if (maybeUpload && maybeUpload.isUploadPreview) {
+      const previewMsg = { type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData };
+      setMessages(prev => [...prev, previewMsg]);
+      return;
+    }
+
+    // Handle final upload result from backend
+    if (maybeUpload && maybeUpload.isUpload) {
+      // If no preview exists in current messages, append a user message with the image and prompt
+      const hasPreview = messages.some(m => m.imageData || m.image);
+      if (!hasPreview) {
+        setMessages(prev => [...prev, { type: 'user', content: maybeUpload.prompt || 'Image', imageData: maybeUpload.imageData, prompt: maybeUpload.prompt }]);
+      }
+      // Append AI response
+      setMessages(prev => [...prev, { type: 'ai', content: maybeUpload.ai }]);
+      return;
+    }
+    
     const trimmed = input.trim();
     if (!trimmed || !activeChatId || isSending) return;
 
@@ -151,7 +169,7 @@ const Home = () => {
       setMessages(newMessages);
       dispatch(setInput(''));
 
-      socket.emit("ai-message", {
+  socket.emit("ai-message", {
         chat: activeChatId,
         content: trimmed,
         mode: composerMode
@@ -161,7 +179,7 @@ const Home = () => {
       if (isMobile) {
         setSidebarOpen(false);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to send message');
       dispatch(sendingFinished());
     }
@@ -188,10 +206,12 @@ const Home = () => {
       const response = await axios.get(`https://aura-x4bd.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
       setMessages(response.data.messages.map(m => ({
         type: m.role === 'user' ? 'user' : 'ai',
-        content: m.content
+        content: m.content,
+  image: m.image || undefined,
+  prompt: m.prompt || undefined
       })));
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to fetch messages');
+    } catch {
+      toast.error('Failed to fetch messages');
     }
   }
 
@@ -204,8 +224,8 @@ const Home = () => {
         setMessages([]);
       }
       toast.success('Chat deleted successfully');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete chat');
+    } catch {
+      toast.error('Failed to delete chat');
     }
   }
 

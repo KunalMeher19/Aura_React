@@ -11,6 +11,7 @@ const ChatMessages = ({ messages, isSending }) => {
   const containerRef = useRef(null);
 
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [modal, setModal] = useState({ open: false, src: null, caption: null });
 
   useEffect(() => {
     const el = lastMessageRef.current;
@@ -47,6 +48,7 @@ const ChatMessages = ({ messages, isSending }) => {
     }
   }, [messages.length, isSending]);
   return (
+  <>
   <div className="messages" ref={containerRef} aria-live="polite">
       {messages.map((m, index) => (
         <div
@@ -56,12 +58,18 @@ const ChatMessages = ({ messages, isSending }) => {
         >
           <div className="msg-role" aria-hidden="true">{m.type === 'user' ? 'You' : 'AI'}</div>
           <div className="msg-bubble">
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-            >
-              {m.content}
-            </ReactMarkdown>
+              {/* If message has image or imageData, render image first */}
+              {m.image || m.imageData ? (
+                <div className="msg-image">
+                  <img src={m.image || m.imageData} alt="uploaded" onClick={() => setModal({ open: true, src: (m.image || m.imageData), caption: m.prompt || m.content })} />
+                </div>
+              ) : null}
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {m.content}
+              </ReactMarkdown>
           </div>
           <div className="msg-actions" role="group" aria-label="Message actions">
             <div style={{ position: 'relative', display: 'inline-flex' }}>
@@ -129,7 +137,17 @@ const ChatMessages = ({ messages, isSending }) => {
         </div>
       )}
       {/* sentinel removed; scrolling now targets the newest message element */}
-    </div>
+  </div>
+  {modal.open && (
+      <div className="image-modal" role="dialog" aria-modal="true" onClick={() => setModal({ open: false, src: null, caption: null })}>
+        <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+          <img src={modal.src} alt="full" />
+          {modal.caption && <div className="image-caption">{modal.caption}</div>}
+          <button className="image-modal-close" onClick={() => setModal({ open: false, src: null, caption: null })} aria-label="Close">✕</button>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 

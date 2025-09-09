@@ -13,6 +13,54 @@
     display: none;
 }
 
+.msg-image img {
+    max-width: 320px;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.image-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 9999;
+}
+.image-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    background: #0b0b0c;
+    padding: 12px;
+    border-radius: 8px;
+}
+.image-modal-content img {
+    max-width: 100%;
+    max-height: 80vh;
+    display: block;
+}
+.image-caption {
+    margin-top: 8px;
+    color: #ddd;
+}
+.image-modal-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .msg {
     display: flex;
     flex-direction: column;
