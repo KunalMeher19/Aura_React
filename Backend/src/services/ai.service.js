@@ -18,15 +18,23 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     // Allow caller override via opts.mimeType, otherwise use detected or default to jpeg
     const mimeType = opts.mimeType || mimeTypeDetected || 'image/jpeg';
 
-    const contents = [
-        {
+    // Build contents as a single object whose `parts` array contains
+    // the image (inlineData) and the text part. Only include the
+    // inlineData part when we actually have base64 data. This avoids
+    // sending empty/invalid fields for text-only prompts which can
+    // trigger proto/JSON errors on the GenAI side.
+    const parts = [];
+    if (base64Data) {
+        parts.push({
             inlineData: {
                 mimeType,
                 data: base64Data, // raw base64 (no "data:...;base64," prefix)
             },
-        },
-        { text: userPrompt },
-    ];
+        });
+    }
+    parts.push({ text: userPrompt });
+
+    const contents = [ { parts } ];
     try {
         const response = await ai.models.generateContent({
             model: modelName,
