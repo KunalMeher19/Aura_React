@@ -193,8 +193,17 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
         return response.text;
     } catch (err) {
         console.warn('AI content generation failed, returning fallback response for tests:', err && err.message);
-        // Fallback mock response so upload flow can be tested without external API availability
-        return `AI service unavailable. Mock response: I received your image and prompt.`;
+        // Fallback mock response so upload flow can be tested without external API availability.
+        // Return a message that's appropriate for text-only or image+text inputs so callers
+        // don't see an image-specific message when they only sent text.
+        const hasImage = !!base64Data;
+        const promptPreview = userPrompt ? String(userPrompt).trim().slice(0, 200) : '';
+
+        if (hasImage) {
+            return `AI service unavailable. Mock response: I received your image${promptPreview ? ' and prompt: ' + promptPreview : '.'}`;
+        } else {
+            return `AI service unavailable. Mock response: I received your prompt${promptPreview ? ': ' + promptPreview : '.'}`;
+        }
     }
 }
 
