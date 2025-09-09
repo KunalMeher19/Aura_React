@@ -200,7 +200,8 @@ const Home = () => {
         // Send over socket as image payload. Include previewId so server can correlate.
         if (!socket?.connected) throw new Error('Not connected to socket');
 
-        socket.emit('ai-message', {
+        // For image uploads we emit a dedicated event to avoid mixing image payloads with text-only listeners
+        socket.emit('ai-image-message', {
           chat: activeChatId,
           content: maybeUpload.prompt || '',
           mode: composerMode,
