@@ -193,7 +193,10 @@ function initSocketServer(httpServer) {
                 let modelOverride = undefined;
                 if (messagePayload.mode === 'thinking') modelOverride = 'gemini-2.5-flash';
 
-                const response = await aiService.contentGenerator([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined);
+                // Use the new message-style generator when we already have an array
+                // of message objects (ltm + stm). Keep the original contentGenerator
+                // available for image+text flows that send a base64 image + prompt.
+                const response = await aiService.contentGeneratorFromMessages([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined);
 
                 socket.emit("ai-response", { content: response, chat: messagePayload.chat });
 
