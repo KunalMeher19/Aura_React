@@ -107,7 +107,12 @@ function initSocketServer(httpServer) {
             });
 
             const aiInputData = converted ? uploadData : originalData;
-            const aiResponse = await aiService.contentGenerator(aiInputData, userPrompt);
+            // Respect composer mode for image flows as well. If the client sent
+            // mode === 'thinking' prefer the higher-capability model.
+            let modelOverride = undefined;
+            if (messagePayload.mode === 'thinking') modelOverride = 'gemini-2.5-flash';
+
+            const aiResponse = await aiService.contentGenerator(aiInputData, userPrompt, modelOverride ? { model: modelOverride } : undefined);
 
             const aiMessage = await messageModel.create({
                 user: socket.user._id,
