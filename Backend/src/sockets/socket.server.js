@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model')
 const aiService = require('../services/ai.service');
 const uploadFile = require('../services/storage.service');
+const FileType = require('file-type');
+const sharp = require('sharp');
 const messageModel = require('../models/message.model')
 const { createMemory, queryMemory } = require('../services/vector.service');
 
@@ -47,23 +49,63 @@ function initSocketServer(httpServer) {
                     const userPrompt = messagePayload.content || '';
 
                     // Keep original data URI (if present) for AI processing, but do not store it in DB.
-                    const originalData = messagePayload.image;
+                    let originalData = messagePayload.image;
 
-                    // Determine an extension from data URI if possible for filename
+                    // Try to parse base64 data URI into a buffer so we can detect real mime type and convert if needed
+                    let base64Data = null;
+                    const dataUriMatch = String(originalData).match(/^data:([a-zA-Z0-9\-+/]+\/[a-zA-Z0-9\-+.]+)?;base64,(.*)$/);
+                    if (dataUriMatch) {
+                        base64Data = dataUriMatch[2];
+                    } else {
+                        // If no data URI header, try to assume the whole string is base64
+                        // (some browser quirks may pass raw base64)
+                        base64Data = String(originalData).replace(/^data:.*;base64,/, '');
+                    }
+
+                    const buffer = Buffer.from(base64Data, 'base64');
+
+                    // Detect file type from buffer
+                    let fileTypeResult = null;
+                    try {
+                        fileTypeResult = await FileType.fromBuffer(buffer);
+                    } catch (e) {
+                        console.warn('file-type detection failed', e && (e.message || e));
+                    }
+
+                    // Default extension
                     let ext = 'jpg';
-                    const mimeMatch = String(originalData).match(/^data:(image\/[^;]+);base64,/);
-                    if (mimeMatch) {
-                        const mime = mimeMatch[1];
-                        const parts = mime.split('/');
-                        if (parts[1]) ext = parts[1].replace('+', '');
+                    let mime = 'image/jpeg';
+                    if (fileTypeResult && fileTypeResult.ext && fileTypeResult.mime) {
+                        ext = fileTypeResult.ext.replace('+', '');
+                        mime = fileTypeResult.mime;
                     }
 
                     const fileName = `user_upload_${Date.now()}.${ext}`;
 
+                    // If format is HEIC/HEIF or other non-web-friendly type, convert it to JPEG using sharp
+                    let uploadBuffer = buffer;
+                    let converted = false;
+                    try {
+                        if (fileTypeResult && /heic|heif/i.test(fileTypeResult.ext)) {
+                            // Convert HEIC to JPEG
+                            uploadBuffer = await sharp(buffer).jpeg({ quality: 82 }).toBuffer();
+                            mime = 'image/jpeg';
+                            ext = 'jpg';
+                            converted = true;
+                        }
+                    } catch (e) {
+                        console.warn('Image conversion failed, will attempt upload of original buffer', e && (e.message || e));
+                        // fallback: keep uploadBuffer as original buffer
+                        uploadBuffer = buffer;
+                    }
+
+                    // Prepare a data string for uploadFile: ImageKit accepts base64 data URIs or buffers; reuse existing behavior by creating a dataURI from uploadBuffer
+                    const uploadData = `data:${mime};base64,${uploadBuffer.toString('base64')}`;
+
                     // Upload to ImageKit using storage.service. This returns an object containing the hosted URL.
                     let uploadResp;
                     try {
-                        uploadResp = await uploadFile(originalData, fileName);
+                        uploadResp = await uploadFile(uploadData, fileName);
                     } catch (err) {
                         console.error('Image upload failed:', err && (err.message || err));
                         throw new Error('Image upload failed');
@@ -81,8 +123,10 @@ function initSocketServer(httpServer) {
                         role: 'user'
                     });
 
-                    // Call AI service with the original data (data URI or base64) so model can process the image
-                    const aiResponse = await aiService.contentGenerator(originalData, userPrompt);
+                    // Call AI service with the original data (data URI or base64) so model can process the image.
+                    // If we converted the image, send the converted data URI instead (more likely to be supported by AI model)
+                    const aiInputData = converted ? uploadData : originalData;
+                    const aiResponse = await aiService.contentGenerator(aiInputData, userPrompt);
 
                     // Save AI response
                     const aiMessage = await messageModel.create({
