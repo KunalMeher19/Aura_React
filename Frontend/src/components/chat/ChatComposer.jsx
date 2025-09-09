@@ -67,12 +67,12 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
     try {
       // Only generate a local preview and keep the File. Do not auto-upload.
       const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result;
-        setPreviewSrc(dataUrl);
-        setSelectedFile(file);
-        if (onSend) onSend({ isUploadPreview: true, imageData: dataUrl, prompt: (typeof input === 'string' ? input : '') });
-      };
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          // keep local preview and the File object only; do not notify parent yet
+          setPreviewSrc(dataUrl);
+          setSelectedFile(file);
+        };
       reader.readAsDataURL(file);
     } finally {
       e.target.value = '';
@@ -116,7 +116,7 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
               <span className={"mode-label" + (currentMode === 'thinking' ? ' active' : '')}>Thinking</span>
             </div>
             <div className='composer-input-row'>
-              {/* Attach / Camera button */}
+              {/* Attach button */}
               <div className="attach-container" ref={attachMenuRef}>
                 <button
                   type="button"
@@ -136,7 +136,7 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
                       Take photo
                     </button>
                     <button type="button" role="menuitem" className="attach-menu-item" onClick={() => { setAttachMenuOpen(false); galleryInputRef.current && galleryInputRef.current.click(); }}>
-                      Upload from gallery
+                      From gallery
                     </button>
                   </div>
                 )}

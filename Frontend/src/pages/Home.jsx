@@ -155,7 +155,9 @@ const Home = () => {
         setMessages(prev => [...prev, previewMsg]);
       }
 
-      dispatch(sendingStarted());
+  dispatch(sendingStarted());
+  // clear composer input immediately when sending an image+prompt
+  dispatch(setInput(''));
 
       try {
         const form = new FormData();
