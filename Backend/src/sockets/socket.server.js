@@ -11,7 +11,11 @@ const { createMemory, queryMemory } = require('../services/vector.service');
 
 function initSocketServer(httpServer) {
 
+    // Increase maxHttpBufferSize so clients can send larger binary/base64 payloads
+    // Default in Socket.IO is ~1MB which causes uploads >1MB to fail. Set to 10MB here.
     const io = new Server(httpServer, {
+        // allow larger incoming messages (bytes)
+        maxHttpBufferSize: 15 * 1024 * 1024, // 15 MB
         cors: {
             origin: "http://localhost:5173",
             allowedHeaders: ["Content-Type", "Authorization"],
