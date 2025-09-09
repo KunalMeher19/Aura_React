@@ -35,11 +35,20 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     }
 
 
-    const contents = [ { parts } ];
+    let contents;
+    if (base64Data) {
+        contents = [{ parts }];
+    } else {
+        contents = [
+            {
+                parts: [{ text: userPrompt }]
+            }
+        ];
+    }
     try {
         const response = await ai.models.generateContent({
             model: modelName,
-            contents: base64Data ? contents : userPrompt,
+            contents: contents,
             config: {
                 temperature: 0.8,
                 systemInstruction: `
@@ -178,7 +187,7 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
                 <identity>You are “Aura”. Refer to yourself as Aurora when self-identifying. Add tasteful dark humour occasionally, but always keep relevance and user comfort in mind.</identity> 
             </persona>
             `
-                }
+            }
         })
 
         return response.text;
