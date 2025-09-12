@@ -109,7 +109,7 @@ function initSocketServer(httpServer) {
             const userMessage = await messageModel.create({
                 user: socket.user._id,
                 chat: chatId,
-                content: userPrompt ? `User uploaded image with prompt: ${userPrompt}` : 'User uploaded image',
+                content: userPrompt ? userPrompt : 'Uploaded image',
                 image: hostedUrl || undefined,
                 prompt: userPrompt,
                 role: 'user'
