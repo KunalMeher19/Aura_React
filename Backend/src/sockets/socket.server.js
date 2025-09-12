@@ -21,6 +21,7 @@ function initSocketServer(httpServer) {
         }
     });
 
+    /*  Socket.io Middleware */
     io.use(async (socket, next) => {
         const cookies = cookie.parse(socket.handshake.headers?.cookie || "");
 
@@ -38,7 +39,15 @@ function initSocketServer(httpServer) {
         }
     })
 
+
+    // Track number of connected users
+    let connectedUsers = 0;
+
     io.on("connection", (socket) => {
+        connectedUsers += 1;
+        console.log(`user ${socket.id} connected`);
+        console.log(`connected users: ${connectedUsers}`);
+
         // Image handling function extracted so we can expose a dedicated event and keep backward compatibility
         const processImagePayload = async (messagePayload) => {
             const chatId = messagePayload.chat;
@@ -219,9 +228,16 @@ function initSocketServer(httpServer) {
         });
 
         socket.on("disconnect", () => {
+            connectedUsers = Math.max(0, connectedUsers - 1);
             console.log(`user ${socket.id} disconnected`);
+            console.log(`connected users: ${connectedUsers}`);
         });
     });
+
+    // Optional: periodic log of connected users for long-running servers
+    setInterval(() => {
+        console.log(`connected users (periodic): ${connectedUsers}`);
+    }, 60 * 1000); // every 60s
 
 }
 

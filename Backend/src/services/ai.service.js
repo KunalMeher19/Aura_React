@@ -4,7 +4,6 @@ const ai = new GoogleGenAI({});
 
 async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     const modelName = opts.model || "gemini-2.0-flash";
-    console.log(`[ai.service] contentGenerator using model: ${modelName}`);
     // Accept either a raw base64 string or a data-URI like "data:image/png;base64,..."
     let mimeTypeDetected;
     let base64Data = base64ImageFile;
