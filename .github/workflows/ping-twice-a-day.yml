@@ -13,4 +13,4 @@ jobs:
 
     steps:
       - name: Run cURL on Website
-        run: curl -I https://your-render-app.onrender.com
+        run: curl -I https://aura-x4bd.onrender.com/login
