@@ -372,7 +372,7 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
 
         // Prefer API-provided message when present
         const apiMessage = err && err.response && err.response.data && err.response.data.message;
-        const message = apiMessage || (err && err.message) || 'AI service unavailable.';
+        const message = err?.message || 'AI service unavailable.';
 
         // Build a preview text from the provided parts
         let textParts = [];
