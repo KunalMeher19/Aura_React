@@ -1,10 +1,11 @@
-# Simulated daily request to your Render project so that the service doesn't go down
-name: Hourly render ping
+# Simulated periodic request to your Render project so that the service doesn't stay idle
+# Now pings every 30 minutes (UTC)
+name: Half-hourly render ping
 
 on:
   schedule:
-    # Run every hour at minute 0 (UTC). Adjust the minute field if you prefer a different minute.
-    - cron: '0 * * * *'
+    # Run every 30 minutes. Uses UTC cron syntax: minute hour day month weekday
+    - cron: '*/30 * * * *'
 
 
 jobs:
@@ -13,4 +14,4 @@ jobs:
 
     steps:
       - name: Run cURL on Website
-        run: curl -I https://aura-x4bd.onrender.com/login
+        run: curl -I https://aura-x4bd.onrender.com
