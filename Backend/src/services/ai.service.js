@@ -192,17 +192,22 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
 
         return response.text;
     } catch (err) {
-        console.warn('AI content generation failed, returning fallback response for tests:', err && err.message);
-        // Fallback mock response so upload flow can be tested without external API availability.
-        // Return a message that's appropriate for text-only or image+text inputs so callers
-        // don't see an image-specific message when they only sent text.
+        // Log full error for debugging
+        console.warn('AI content generation failed, returning fallback response for tests:', err);
+
+        // Try to return a useful error message to callers. Prefer structured API messages
+        // when available (e.g. err.response.data.message), otherwise fall back to err.message.
+        const apiMessage = err && err.response && err.response.data && err.response.data.message;
+        const message = apiMessage || (err && err.message) || 'AI service unavailable.';
+
+        // Preserve previous mock reply shape for downstream consumers but include the error message
         const hasImage = !!base64Data;
         const promptPreview = userPrompt ? String(userPrompt).trim().slice(0, 200) : '';
 
         if (hasImage) {
-            return `AI service unavailable. Mock response: I received your image${promptPreview ? ' and prompt: ' + promptPreview : '.'}`;
+            return `AI service error: ${message} Mock response: I received your image${promptPreview ? ' and prompt: ' + promptPreview : '.'}`;
         } else {
-            return `AI service unavailable. Mock response: I received your prompt${promptPreview ? ': ' + promptPreview : '.'}`;
+            return `AI service error: ${message} Mock response: I received your prompt${promptPreview ? ': ' + promptPreview : '.'}`;
         }
     }
 }
@@ -363,7 +368,11 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
 
         return response.text;
     } catch (err) {
-        console.warn('AI content generation failed (messages path), returning fallback response for tests:', err && err.message);
+        console.warn('AI content generation failed (messages path), returning fallback response for tests:', err);
+
+        // Prefer API-provided message when present
+        const apiMessage = err && err.response && err.response.data && err.response.data.message;
+        const message = apiMessage || (err && err.message) || 'AI service unavailable.';
 
         // Build a preview text from the provided parts
         let textParts = [];
@@ -384,9 +393,9 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
         const hasImage = textParts.some(t => t === '[image]');
 
         if (hasImage) {
-            return `AI service unavailable. Mock response: I received your image${combined ? ' and context: ' + combined : '.'}`;
+            return `AI service error for image: ${message} `;
         } else {
-            return `AI service unavailable. Mock response: I received your prompt${combined ? ': ' + combined : '.'}`;
+            return `AI service error for prompt: ${message} `;
         }
     }
 }
