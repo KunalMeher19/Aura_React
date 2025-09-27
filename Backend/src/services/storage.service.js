@@ -1,4 +1,5 @@
 const Imagekit = require('imagekit');
+/* This is used to store user-uploaded images and for re-rendering the image if the page is reloaded */
 
 const imagekit = new Imagekit({
     publicKey: process.env.IMAGEKIT_PUBLICKEY,
