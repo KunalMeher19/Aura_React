@@ -107,6 +107,18 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
         const next = prev + (k === ' ' ? ' ' : k);
         setInput(next);
         latestInputRef.current = next;
+        // After state update, ensure caret is at the end so the next character types after the first
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          if (el) {
+            el.focus();
+            const len = typeof next === 'string' ? next.length : 0;
+            try { el.setSelectionRange(len, len); }
+            catch {
+              // Some browsers may throw if selection APIs are unavailable; safe to ignore
+            }
+          }
+        });
         return;
       }
 
@@ -126,6 +138,18 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
       const next = prev + text;
       setInput(next);
       latestInputRef.current = next;
+      // Keep caret at the end after paste-driven input
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          const len = typeof next === 'string' ? next.length : 0;
+          try { el.setSelectionRange(len, len); }
+          catch {
+            // Ignore selection errors
+          }
+        }
+      });
     };
 
     document.addEventListener('keydown', onKeyDown);
