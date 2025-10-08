@@ -30,7 +30,12 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onNewChat, onToggleSid
               onClick={() => onSelectChat(c._id)}
             >
               <span className="title-line">
-                {c.title}
+                <span>
+                  {c.title}
+                  {c.isTemp && (
+                    <span className="temp-badge" title="Temporary chat">Temp</span>
+                  )}
+                </span>
                 <div 
                   className="delete-chat-button"
                   onClick={(e) => {

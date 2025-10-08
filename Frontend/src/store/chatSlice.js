@@ -21,8 +21,8 @@ const chatSlice = createSlice({
         },
         startNewChat: {
             reducer(state, action) {
-                const { _id, title } = action.payload;
-                state.chats.unshift({ _id, title: title || 'New Chat', messages: [] });
+                const { _id, title, isTemp } = action.payload;
+                state.chats.unshift({ _id, title: title || 'New Chat', messages: [], ...(typeof isTemp === 'boolean' ? { isTemp } : {}) });
                 state.activeChatId = _id;
             }
         },
@@ -69,7 +69,10 @@ const chatSlice = createSlice({
         updateChatTitle(state, action) {
             const { chatId, title } = action.payload;
             const chat = state.chats.find(c => c._id === chatId);
-            if (chat && title) chat.title = title;
+            if (chat && title) {
+                chat.title = title;
+                if (chat.isTemp) chat.isTemp = false;
+            }
         }
     }
 });
