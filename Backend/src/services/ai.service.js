@@ -2,6 +2,21 @@ const { GoogleGenAI } = require('@google/genai');
 
 const ai = new GoogleGenAI({});
 
+// Generate a concise title from a user's first prompt
+async function generateTitleFromText(text) {
+    const prompt = `Generate a very short, 3-6 word title (no quotes) summarizing this chat topic. Keep it concise and descriptive. Text: "${text.slice(0, 400)}"`;
+    try {
+        const res = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: { temperature: 0.6 }
+        });
+        return (res.text || '').trim().replace(/^"|"$/g, '').slice(0, 80) || 'New Chat';
+    } catch (e) {
+        return text ? (text.split('\n')[0].slice(0, 40) + (text.length > 40 ? '…' : '')) : 'New Chat';
+    }
+}
+
 async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     const modelName = opts.model || "gemini-2.0-flash";
     // Accept either a raw base64 string or a data-URI like "data:image/png;base64,..."
@@ -415,5 +430,6 @@ async function embeddingGenerator(content) {
 module.exports = {
     contentGenerator,
     contentGeneratorFromMessages,
-    embeddingGenerator
+    embeddingGenerator,
+    generateTitleFromText
 };

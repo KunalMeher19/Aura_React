@@ -17,7 +17,8 @@ import {
   setInput,
   sendingStarted,
   sendingFinished,
-  setChats
+  setChats,
+  updateChatTitle
 } from '../store/chatSlice.js';
 
 const Home = () => {
@@ -88,7 +89,14 @@ const Home = () => {
     // Fetch chats
     axios.get("https://aura-x4bd.onrender.com/api/chat", { withCredentials: true })
       .then(response => {
-        dispatch(setChats(response.data.chats.reverse()));
+        // Server returns newest first; we keep same order, ensure selecting the first chat automatically
+        const chatsResp = response.data.chats;
+        dispatch(setChats(chatsResp));
+        if (chatsResp && chatsResp.length > 0) {
+          const firstChat = chatsResp[0];
+          dispatch(selectChat(firstChat._id));
+          getMessages(firstChat._id);
+        }
       })
       .catch(() => {
         toast.error('Failed to load chats');
@@ -124,6 +132,11 @@ const Home = () => {
         type: 'ai',
         content: messagePayload.content
       }]);
+
+      // If server indicates the chat title changed (e.g., from Temp to generated title), update local state
+      if (messagePayload.title && messagePayload.chat) {
+        dispatch(updateChatTitle({ chatId: messagePayload.chat, title: messagePayload.title }));
+      }
 
       // clear any sending state
       dispatch(sendingFinished());

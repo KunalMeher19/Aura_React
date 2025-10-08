@@ -61,6 +61,19 @@ async function loginUser(req, res) {
     const token = jwt.sign({ id: user._id },process.env.JWT_SECRET);
     res.cookie('token',token);
 
+    try {
+        // Create a temp chat on every login so user always sees a ready chat
+        const chatModel = require('../models/chat.model');
+        await chatModel.create({
+            user: user._id,
+            title: 'Temp',
+            isTemp: true
+        });
+    } catch (e) {
+        // Non-blocking: failure to create temp chat should not block login
+        console.warn('Temp chat creation failed on login:', e && (e.message || e));
+    }
+
     return res.status(200).json({
         message: "Loggin successfull",
         user:{

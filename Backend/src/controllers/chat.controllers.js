@@ -27,7 +27,26 @@ async function createChat(req, res) {
 
 async function getChats(req, res) {
     const user = req.user;
-    const chats = await chatModel.find({ user: user._id });
+    // Cleanup: remove any temp chats with zero messages (unused placeholders)
+    const tempChats = await chatModel.find({ user: user._id, isTemp: true }).sort({ createdAt: -1 });
+    if (tempChats.length > 1) {
+        // Keep the most recent temp chat; delete older temp chats that are unused (0 messages)
+        const keepId = String(tempChats[0]._id);
+        const candidateIds = tempChats.slice(1).map(c => c._id);
+        if (candidateIds.length) {
+            const counts = await messageModel.aggregate([
+                { $match: { chat: { $in: candidateIds } } },
+                { $group: { _id: '$chat', count: { $sum: 1 } } }
+            ]);
+            const usedSet = new Set(counts.map(c => String(c._id)));
+            const toDelete = candidateIds.filter(id => !usedSet.has(String(id)));
+            if (toDelete.length) {
+                await chatModel.deleteMany({ _id: { $in: toDelete } });
+            }
+        }
+    }
+
+    const chats = await chatModel.find({ user: user._id }).sort({ updatedAt: -1 });
 
     res.status(200).json({
         message: "chats fetched successfully",
@@ -36,6 +55,7 @@ async function getChats(req, res) {
             title: chat.title,
             lastActivity: chat.lastActivity,
             user: chat.user,
+            isTemp: !!chat.isTemp,
         }))
     })
 }

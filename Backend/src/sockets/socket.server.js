@@ -8,6 +8,7 @@ const FileType = require('file-type');
 const sharp = require('sharp');
 const messageModel = require('../models/message.model')
 const { createMemory, queryMemory } = require('../services/vector.service');
+const chatModel = require('../models/chat.model');
 
 function initSocketServer(httpServer) {
 
@@ -115,6 +116,23 @@ function initSocketServer(httpServer) {
                 role: 'user'
             });
 
+            // Touch chat lastActivity and rename temp chat if this is the first message
+            let updatedTitle;
+            try {
+                await chatModel.findByIdAndUpdate(chatId, { $set: { lastActivity: new Date() } });
+                const [msgCount, chatDoc] = await Promise.all([
+                    messageModel.countDocuments({ chat: chatId }),
+                    chatModel.findById(chatId).lean()
+                ]);
+                if (chatDoc && chatDoc.isTemp && msgCount === 1) {
+                    const newTitle = await aiService.generateTitleFromText(userPrompt || 'Image conversation');
+                    await chatModel.findByIdAndUpdate(chatId, { $set: { title: newTitle, isTemp: false, lastActivity: new Date() } });
+                    updatedTitle = newTitle;
+                }
+            } catch (e) {
+                console.warn('Temp chat title update failed (image path):', e && (e.message || e));
+            }
+
             const aiInputData = converted ? uploadData : originalData;
             // Respect composer mode for image flows as well. If the client sent
             // mode === 'thinking' prefer the higher-capability model.
@@ -129,6 +147,7 @@ function initSocketServer(httpServer) {
                 content: aiResponse,
                 role: 'model'
             });
+            try { await chatModel.findByIdAndUpdate(chatId, { $set: { lastActivity: new Date() } }); } catch {}
 
             try {
                 const [uVec, aVec] = await Promise.all([
@@ -142,7 +161,7 @@ function initSocketServer(httpServer) {
                 console.warn('Embedding generation failed for uploaded image flow', e && (e.message || e));
             }
 
-            const respPayload = { content: aiResponse, chat: chatId };
+            const respPayload = { content: aiResponse, chat: chatId, ...(updatedTitle ? { title: updatedTitle } : {}) };
             if (messagePayload.previewId) respPayload.previewId = messagePayload.previewId;
             if (hostedUrl) respPayload.imageData = hostedUrl;
 
@@ -180,6 +199,22 @@ function initSocketServer(httpServer) {
                     aiService.embeddingGenerator(messagePayload.content)
                 ]);
 
+                // If this is the first message in a temp chat, generate a title and update the chat
+                try {
+                    const chatId = messagePayload.chat;
+                    const [msgCount, chatDoc] = await Promise.all([
+                        messageModel.countDocuments({ chat: chatId }),
+                        chatModel.findById(chatId).lean()
+                    ]);
+                    // msgCount includes the just-created user message; first real message means count === 1
+                    if (chatDoc && chatDoc.isTemp && msgCount === 1) {
+                        const newTitle = await aiService.generateTitleFromText(messagePayload.content);
+                        await chatModel.findByIdAndUpdate(chatId, { $set: { title: newTitle, isTemp: false, lastActivity: new Date() } });
+                    }
+                } catch (e) {
+                    console.warn('Failed to generate/update temp chat title:', e && (e.message || e));
+                }
+
                 const [memory, chatHistory] = await Promise.all([
                     queryMemory({
                         queryVector: vectors,
@@ -212,7 +247,14 @@ function initSocketServer(httpServer) {
                 // available for image+text flows that send a base64 image + prompt.
                 const response = await aiService.contentGeneratorFromMessages([...ltm, ...stm], modelOverride ? { model: modelOverride } : undefined);
 
-                socket.emit("ai-response", { content: response, chat: messagePayload.chat });
+                // Fetch latest chat doc to include updated title if it changed
+                let updatedTitle;
+                try {
+                    const c = await chatModel.findById(messagePayload.chat).lean();
+                    updatedTitle = c && c.title;
+                } catch {}
+
+                socket.emit("ai-response", { content: response, chat: messagePayload.chat, ...(updatedTitle ? { title: updatedTitle } : {}) });
 
                 const [resposneMessage, resoponseVectors] = await Promise.all([
                     messageModel.create({ user: socket.user._id, chat: messagePayload.chat, content: response, role: "model" }),

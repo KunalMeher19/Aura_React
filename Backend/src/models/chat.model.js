@@ -10,6 +10,13 @@ const chatSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    // Marks a chat as temporary (created on login). It will be renamed on first message
+    // and may be deleted automatically if left unused.
+    isTemp: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
     lastActivity: {
         type: Date,
         default: Date.now
