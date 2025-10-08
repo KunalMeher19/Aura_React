@@ -46,8 +46,8 @@ function initSocketServer(httpServer) {
 
     io.on("connection", (socket) => {
         connectedUsers += 1;
-        console.log(`user ${socket.id} connected`);
-        console.log(`connected users: ${connectedUsers}`);
+        // Single concise log on user connect
+        console.log(`user ${socket.id} connected (connected users: ${connectedUsers})`);
 
         // Image handling function extracted so we can expose a dedicated event and keep backward compatibility
         const processImagePayload = async (messagePayload) => {
@@ -276,10 +276,7 @@ function initSocketServer(httpServer) {
         });
     });
 
-    // Optional: periodic log of connected users for long-running servers
-    setInterval(() => {
-        console.log(`connected users (periodic): ${connectedUsers}`);
-    }, 60 * 1000); // every 60s
+    // Removed periodic logging of connected users to prevent noisy logs
 
 }
 
