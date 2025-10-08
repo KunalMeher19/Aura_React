@@ -24,6 +24,7 @@
     justify-content: center;
     background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0));
     backdrop-filter: blur(12px);
+}
 
 
 .composer-surface {
@@ -39,6 +40,7 @@
     padding: 12px 14px 14px 18px; /* top tighter than bottom for hint room */
     position: relative;
     transition: border-color .15s, background-color .15s, box-shadow .15s;
+    cursor: text; /* indicate typing area across whole surface */
 }
 
 .composer-mode-toggle {
@@ -110,7 +112,6 @@
     left: 14px;
     background: var(--color-primary-hover, #2563eb);
 }
-}
 
 .composer-surface:focus-within {
     background: #232324;
@@ -155,7 +156,7 @@
     padding-left: 6px;
     font-size: 11px;
     color: #5f6165;
-    pointer-events: none;
+    pointer-events: none; /* allow clicks through to surface */
     user-select: none;
     line-height: 1.1;
     font-weight: 500;

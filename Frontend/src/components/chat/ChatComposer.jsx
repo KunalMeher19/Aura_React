@@ -16,6 +16,9 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
   };
   const currentMode = onModeChange ? mode : localMode;
   const textareaRef = useRef(null);
+  // Keep latest input in a ref to avoid stale closures in document listeners
+  const latestInputRef = useRef(input);
+  useEffect(() => { latestInputRef.current = input; }, [input]);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const attachMenuRef = useRef(null);
@@ -60,6 +63,79 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
     return () => document.removeEventListener('click', onDocClick);
   }, []);
 
+  // Focus the textarea when user clicks anywhere on the composer surface
+  const focusInput = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      // place cursor at end
+      const el = textareaRef.current;
+      const val = el.value;
+      // Move caret to end without changing scroll
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = val?.length ?? 0;
+      });
+    }
+  }, []);
+
+  // Helper: detect if target is an editable element
+  const isEditableTarget = (t) => {
+    if (!t) return false;
+    const tag = (t.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return true;
+    // contentEditable
+    if (t.isContentEditable) return true;
+    return false;
+  };
+
+  // Global typing-to-focus and paste-to-focus behavior
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // ignore if user is typing in an input/textarea/contentEditable already
+      if (isEditableTarget(e.target)) return;
+      // ignore modifier combos (except Shift)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // ignore function/navigation keys
+      const k = e.key;
+      if (!k) return;
+
+      // If printable character (length 1) or space, focus and insert
+      const printable = k.length === 1;
+      if (printable || k === ' ') {
+        e.preventDefault();
+        focusInput();
+        const prev = typeof latestInputRef.current === 'string' ? latestInputRef.current : '';
+        const next = prev + (k === ' ' ? ' ' : k);
+        setInput(next);
+        latestInputRef.current = next;
+        return;
+      }
+
+      // If Enter pressed first, just focus (don't send)
+      if (k === 'Enter') {
+        focusInput();
+      }
+    };
+
+    const onPaste = (e) => {
+      if (isEditableTarget(e.target)) return;
+      const text = e.clipboardData?.getData('text');
+      if (!text) return;
+      e.preventDefault();
+      focusInput();
+      const prev = typeof latestInputRef.current === 'string' ? latestInputRef.current : '';
+      const next = prev + text;
+      setInput(next);
+      latestInputRef.current = next;
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('paste', onPaste);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('paste', onPaste);
+    };
+  }, [focusInput, setInput]);
+
   // Shared handler for file inputs (camera or gallery)
   const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -91,7 +167,15 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
       }
       if ((typeof input === 'string' && input.trim())) onSend && onSend();
     }}>
-      <div className="composer-surface" data-state={isSending ? 'sending' : undefined}>
+      <div
+        className="composer-surface"
+        data-state={isSending ? 'sending' : undefined}
+        onMouseDown={() => {
+          // Always focus the input when clicking anywhere on the surface
+          // (lets buttons still work; focusing doesn't interfere)
+          focusInput();
+        }}
+      >
         {/* Input row */}
         <div className="composer-field-row">
           <div className="composer-field">
@@ -174,6 +258,7 @@ const ChatComposer = ({ input, setInput, onSend, isSending, mode = 'normal', onM
                   rows={1}
                   spellCheck
                   autoComplete="off"
+                  autoFocus
                 />
                 <div className="composer-hint" aria-hidden="true">Enter ↵ to send • Shift+Enter = newline</div>
               </div>
