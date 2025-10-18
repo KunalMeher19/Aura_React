@@ -142,6 +142,25 @@ const Home = () => {
       dispatch(sendingFinished());
     });
 
+    // When the server finishes uploading the image, it will emit this event
+    tempSocket.on('image-uploaded', (payload) => {
+      // Replace the preview image with hosted URL and clear progress flags
+      setMessages(prev => prev.map(m => (
+        payload.previewId && m.id === payload.previewId
+          ? { ...m, image: payload.imageData, imageData: undefined, uploadProgress: 0, preview: false }
+          : m
+      )));
+    });
+
+    tempSocket.on('image-upload-error', (payload) => {
+      // Mark preview as failed; user can retry
+      setMessages(prev => prev.map(m => (
+        payload.previewId && m.id === payload.previewId
+          ? { ...m, uploadProgress: 0, preview: false, uploadError: true }
+          : m
+      )));
+    });
+
     tempSocket.on("error", (err) => {
       toast.error(err.message || 'An error occurred with the chat');
       dispatch(sendingFinished());

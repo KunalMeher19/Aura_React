@@ -54,6 +54,7 @@ function initSocketServer(httpServer) {
             const chatId = messagePayload.chat;
             const userPrompt = messagePayload.content || '';
 
+            // 1) Extract base64 from incoming data URL or raw base64
             let originalData = messagePayload.image;
             let base64Data = null;
             const dataUriMatch = String(originalData).match(/^data:([a-zA-Z0-9\-+\/]+\/[a-zA-Z0-9\-+.]+)?;base64,(.*)$/);
@@ -65,6 +66,7 @@ function initSocketServer(httpServer) {
 
             const buffer = Buffer.from(base64Data, 'base64');
 
+            // 2) Detect type, convert HEIC/HEIF, and downscale large images to speed up processing+upload
             let fileTypeResult = null;
             try {
                 fileTypeResult = await FileType.fromBuffer(buffer);
@@ -81,37 +83,53 @@ function initSocketServer(httpServer) {
 
             const fileName = `user_upload_${Date.now()}.${ext}`;
 
-            let uploadBuffer = buffer;
+            // Prepare a processed buffer we can both feed to AI and upload later
+            let processedBuffer = buffer;
+            let processedMime = mime;
+            let processedExt = ext;
             let converted = false;
             try {
+                let img = sharp(buffer);
+                // Convert HEIC/HEIF to JPEG for compatibility
                 if (fileTypeResult && /heic|heif/i.test(fileTypeResult.ext)) {
-                    uploadBuffer = await sharp(buffer).jpeg({ quality: 82 }).toBuffer();
-                    mime = 'image/jpeg';
-                    ext = 'jpg';
+                    img = img.jpeg({ quality: 82 });
+                    processedMime = 'image/jpeg';
+                    processedExt = 'jpg';
                     converted = true;
                 }
+
+                // Optional: resize very large images to reduce payload and latency (max 1600px)
+                const meta = await img.metadata();
+                const maxDim = 1600;
+                if ((meta.width && meta.width > maxDim) || (meta.height && meta.height > maxDim)) {
+                    img = img.resize({ width: (meta.width && meta.width > meta.height) ? maxDim : undefined, height: (meta.height && meta.height >= (meta.width || 0)) ? maxDim : undefined, fit: 'inside', withoutEnlargement: true });
+                    // Ensure a reasonable output format
+                    if (processedMime === 'image/jpeg' || processedExt === 'jpg' || /jpe?g/i.test(processedExt)) {
+                        img = img.jpeg({ quality: 82, mozjpeg: true });
+                        processedMime = 'image/jpeg';
+                        processedExt = 'jpg';
+                    } else if (/png/i.test(processedExt)) {
+                        img = img.png({ compressionLevel: 8 });
+                        processedMime = 'image/png';
+                        processedExt = 'png';
+                    }
+                }
+                processedBuffer = await img.toBuffer();
             } catch (e) {
-                console.warn('Image conversion failed, will attempt upload of original buffer', e && (e.message || e));
-                uploadBuffer = buffer;
+                console.warn('Image processing failed, falling back to original buffer', e && (e.message || e));
+                processedBuffer = buffer;
+                processedMime = mime;
+                processedExt = ext;
             }
 
-            const uploadData = `data:${mime};base64,${uploadBuffer.toString('base64')}`;
+            const processedDataUri = `data:${processedMime};base64,${processedBuffer.toString('base64')}`;
 
-            let uploadResp;
-            try {
-                uploadResp = await uploadFile(uploadData, fileName);
-            } catch (err) {
-                console.error('Image upload failed:', err && (err.message || err));
-                throw new Error('Image upload failed');
-            }
-
-            const hostedUrl = uploadResp && (uploadResp.url || uploadResp.filePath || uploadResp.name) ? (uploadResp.url || uploadResp.filePath || uploadResp.name) : null;
-
+            // 3) Create the user message immediately (without waiting for upload)
             const userMessage = await messageModel.create({
                 user: socket.user._id,
                 chat: chatId,
                 content: userPrompt ? userPrompt : 'Uploaded image',
-                image: hostedUrl || undefined,
+                // image will be attached after upload completes
                 prompt: userPrompt,
                 role: 'user'
             });
@@ -133,13 +151,11 @@ function initSocketServer(httpServer) {
                 console.warn('Temp chat title update failed (image path):', e && (e.message || e));
             }
 
-            const aiInputData = converted ? uploadData : originalData;
-            // Respect composer mode for image flows as well. If the client sent
-            // mode === 'thinking' prefer the higher-capability model.
+            // 4) Generate AI response right away using the processed data (no upload dependency)
             let modelOverride = undefined;
             if (messagePayload.mode === 'thinking') modelOverride = 'gemini-2.5-flash';
 
-            const aiResponse = await aiService.contentGenerator(aiInputData, userPrompt, modelOverride ? { model: modelOverride } : undefined);
+            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, modelOverride ? { model: modelOverride, mimeType: processedMime } : { mimeType: processedMime });
 
             const aiMessage = await messageModel.create({
                 user: socket.user._id,
@@ -149,23 +165,51 @@ function initSocketServer(httpServer) {
             });
             try { await chatModel.findByIdAndUpdate(chatId, { $set: { lastActivity: new Date() } }); } catch {}
 
-            try {
-                const [uVec, aVec] = await Promise.all([
-                    aiService.embeddingGenerator(userMessage.content),
-                    aiService.embeddingGenerator(aiResponse)
-                ]);
-
-                await createMemory({ vectors: uVec, messageId: userMessage._id, metadata: { chat: chatId, user: socket.user._id, text: userMessage.content } });
-                await createMemory({ vectors: aVec, messageId: aiMessage._id, metadata: { chat: chatId, user: socket.user._id, text: aiResponse } });
-            } catch (e) {
-                console.warn('Embedding generation failed for uploaded image flow', e && (e.message || e));
-            }
-
+            // 5) Emit AI response immediately (faster perceived latency). Include previewId for client-side correlation.
             const respPayload = { content: aiResponse, chat: chatId, ...(updatedTitle ? { title: updatedTitle } : {}) };
             if (messagePayload.previewId) respPayload.previewId = messagePayload.previewId;
-            if (hostedUrl) respPayload.imageData = hostedUrl;
-
             socket.emit('ai-response', respPayload);
+
+            // 6) In the background: upload the (processed) image and emit a follow-up event when done
+            (async () => {
+                try {
+                    const uploadData = `data:${processedMime};base64,${processedBuffer.toString('base64')}`;
+                    const nameForUpload = `user_upload_${Date.now()}.${processedExt}`;
+                    const uploadResp = await uploadFile(uploadData, nameForUpload);
+                    const hostedUrl = uploadResp && (uploadResp.url || uploadResp.filePath || uploadResp.name) ? (uploadResp.url || uploadResp.filePath || uploadResp.name) : null;
+
+                    if (hostedUrl) {
+                        try {
+                            await messageModel.findByIdAndUpdate(userMessage._id, { $set: { image: hostedUrl } });
+                        } catch (e) {
+                            console.warn('Failed to patch user message with hosted image URL', e && (e.message || e));
+                        }
+                        // Notify client to replace the local preview with hosted URL
+                        const imgPayload = { chat: chatId, imageData: hostedUrl };
+                        if (messagePayload.previewId) imgPayload.previewId = messagePayload.previewId;
+                        socket.emit('image-uploaded', imgPayload);
+                    }
+                } catch (err) {
+                    console.error('Image upload failed (background):', err && (err.message || err));
+                    const errPayload = { chat: chatId, error: 'Image upload failed' };
+                    if (messagePayload.previewId) errPayload.previewId = messagePayload.previewId;
+                    socket.emit('image-upload-error', errPayload);
+                }
+            })();
+
+            // 7) Also run embeddings in the background to avoid blocking the response
+            (async () => {
+                try {
+                    const [uVec, aVec] = await Promise.all([
+                        aiService.embeddingGenerator(userMessage.content),
+                        aiService.embeddingGenerator(aiResponse)
+                    ]);
+                    await createMemory({ vectors: uVec, messageId: userMessage._id, metadata: { chat: chatId, user: socket.user._id, text: userMessage.content } });
+                    await createMemory({ vectors: aVec, messageId: aiMessage._id, metadata: { chat: chatId, user: socket.user._id, text: aiResponse } });
+                } catch (e) {
+                    console.warn('Embedding generation failed for uploaded image flow (background)', e && (e.message || e));
+                }
+            })();
         };
 
         // Listener for image+text payloads
