@@ -11,23 +11,17 @@ const app = express();
 
 const allowedOrigins = [
   'https://aura-autologin.netlify.app',
-  'https://aura-x4bd.onrender.com',     // app origin
-  'http://localhost:5173'               // dev origin
+  'https://aura-x4bd.onrender.com',     // your app origin
+  'http://localhost:5173'               // dev origin you used earlier
 ];
 
-// CORS: use a function to echo the incoming origin if it's allowed
-app.use(cors({
-  origin: function(origin, callback) {
-    // allow requests with no origin (mobile apps, curl, tests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.has(origin)) return callback(null, origin);
-    return callback(new Error('CORS: Origin not allowed'), false);
-  },
-  credentials: true,        // allow cookies to be sent
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-Requested-With']
-}));
-
+// Middlewares
+app.use(cors(
+    {
+        origin: allowedOrigins,
+        credentials: true,
+    }
+))
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')))
