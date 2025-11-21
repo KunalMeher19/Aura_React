@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auto Login</title>
+  <style>
+    body { 
+      font-family: system-ui, sans-serif; 
+      display:flex; 
+      align-items:center; 
+      justify-content:center; 
+      height:100vh; 
+      margin:0; 
+      background:#f5f5f5;
+    }
+    .card {
+      max-width:420px; 
+      width:90%;
+      padding:22px; 
+      background:white; 
+      border-radius:10px; 
+      box-shadow:0 8px 24px rgba(0,0,0,.1);
+      text-align:center;
+    }
+    button { 
+      margin-top:16px; 
+      padding:10px 16px; 
+      border:none; 
+      background:#4a6cff; 
+      color:white; 
+      border-radius:6px; 
+      cursor:pointer; 
+      font-size:16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Signing you in…</h2>
+    <p>If auto-login doesn't work, click the button below.</p>
+    <button id="manual">Try Again</button>
+  </div>
+
+  <script>
+    // Set your test credentials here
+    const email = "test@test.com";
+    const password = "test";
+
+    async function doLogin() {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password }),
+          credentials: "include"
+        });
+
+        if (res.ok) {
+          // Redirect to the main chat page after successful login
+          window.location.href = "/";
+        } else {
+          alert("Login failed: " + res.status);
+        }
+      } catch (err) {
+        alert("Network error: " + err);
+      }
+    }
+
+    // Auto-run on load
+    setTimeout(doLogin, 300);
+
+    // Manual button
+    document.getElementById("manual").onclick = doLogin;
+  </script>
+
+</body>
+</html>
