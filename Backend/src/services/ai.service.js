@@ -220,12 +220,42 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
             });
         }
 
-        const response = await openai.chat.completions.create({
-            model: modelName,
-            messages: messages,
-            temperature: 0.8,
-            max_tokens: 2000
-        });
+        // Configure API parameters based on model type
+        let apiParams;
+        if (modelName === MODELS.THINKING) {
+            // o3-mini doesn't support system messages, temperature, or max_tokens
+            const systemContent = messages.find(m => m.role === 'system')?.content;
+            const userMessages = messages.filter(m => m.role !== 'system');
+
+            // Prepend system instruction to first user message if exists
+            if (userMessages.length > 0 && systemContent) {
+                if (Array.isArray(userMessages[0].content)) {
+                    // For image messages, prepend to the text part
+                    const textContent = userMessages[0].content.find(c => c.type === 'text');
+                    if (textContent) {
+                        textContent.text = `${systemContent}\n\n${textContent.text}`;
+                    }
+                } else {
+                    // For text-only messages
+                    userMessages[0].content = `${systemContent}\n\n${userMessages[0].content}`;
+                }
+            }
+
+            apiParams = {
+                model: modelName,
+                messages: userMessages,
+                max_completion_tokens: 2000  // o3-mini uses max_completion_tokens
+            };
+        } else {
+            apiParams = {
+                model: modelName,
+                messages: messages,
+                temperature: 0.8,
+                max_tokens: 2000
+            };
+        }
+
+        const response = await openai.chat.completions.create(apiParams);
 
         return response.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
     } catch (err) {
@@ -285,7 +315,7 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
         // For o3-mini model, we need to remove system message and use specific parameters
         let apiParams;
         if (modelName === MODELS.THINKING) {
-            // o3-mini doesn't support system messages or temperature
+            // o3-mini doesn't support system messages, temperature, or max_tokens
             // Move system instruction to first user message
             const systemContent = messages.find(m => m.role === 'system')?.content;
             const userMessages = messages.filter(m => m.role !== 'system');
@@ -297,7 +327,8 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
 
             apiParams = {
                 model: modelName,
-                messages: userMessages
+                messages: userMessages,
+                max_completion_tokens: 2000  // o3-mini uses max_completion_tokens instead of max_tokens
             };
         } else {
             apiParams = {
