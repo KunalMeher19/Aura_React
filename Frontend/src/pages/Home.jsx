@@ -154,6 +154,7 @@ const Home = () => {
 
     tempSocket.on('image-upload-error', (payload) => {
       // Mark preview as failed; user can retry
+      toast.error(payload.error || 'Failed to upload image to server');
       setMessages(prev => prev.map(m => (
         payload.previewId && m.id === payload.previewId
           ? { ...m, uploadProgress: 0, preview: false, uploadError: true }
@@ -319,13 +320,13 @@ const Home = () => {
 
   const deleteChat = async (chatId) => {
     try {
-      await axios.delete(`https://aura-x4bd.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
       dispatch(setChats(chats.filter(chat => chat._id !== chatId)));
+      await axios.delete(`https://aura-x4bd.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
+      toast.success('Chat deleted successfully');
       if (activeChatId === chatId) {
         dispatch(selectChat(null));
         setMessages([]);
       }
-      toast.success('Chat deleted successfully');
     } catch {
       toast.error('Failed to delete chat');
     }
