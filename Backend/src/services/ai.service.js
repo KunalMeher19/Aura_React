@@ -9,7 +9,7 @@ const openai = new OpenAI({
 const MODELS = {
     BASIC: 'gpt-4o-mini',           // Fast, cost-effective for basic tasks
     THINKING: 'o3-mini',            // Reasoning model for thinking mode
-    VISION: 'gpt-4.1',              // Vision-capable model for images
+    VISION: 'gpt-4o',               // Vision-capable model for images
     TITLE: 'gpt-4o-mini',           // Quick model for title generation
     EMBEDDING: 'text-embedding-3-small'  // 768 dimensions
 };

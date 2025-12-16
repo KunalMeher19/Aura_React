@@ -4,11 +4,17 @@ const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model')
 const aiService = require('../services/ai.service');
 const uploadFile = require('../services/storage.service');
-const FileType = require('file-type');
 const sharp = require('sharp');
 const messageModel = require('../models/message.model')
 const { createMemory, queryMemory } = require('../services/vector.service');
 const chatModel = require('../models/chat.model');
+
+// Dynamic import for file-type (ES module)
+let fileTypeFromBuffer;
+(async () => {
+    const fileTypeModule = await import('file-type');
+    fileTypeFromBuffer = fileTypeModule.fileTypeFromBuffer;
+})();
 
 function initSocketServer(httpServer) {
 
@@ -69,7 +75,11 @@ function initSocketServer(httpServer) {
             // 2) Detect type, convert HEIC/HEIF, and downscale large images to speed up processing+upload
             let fileTypeResult = null;
             try {
-                fileTypeResult = await FileType.fromBuffer(buffer);
+                if (fileTypeFromBuffer) {
+                    fileTypeResult = await fileTypeFromBuffer(buffer);
+                } else {
+                    console.warn('file-type module not yet loaded, using fallback');
+                }
             } catch (e) {
                 console.warn('file-type detection failed', e && (e.message || e));
             }
@@ -152,10 +162,11 @@ function initSocketServer(httpServer) {
             }
 
             // 4) Generate AI response right away using the processed data (no upload dependency)
-            let modelOverride = undefined;
-            if (messagePayload.mode === 'thinking') modelOverride = 'o3-mini';
+            // Note: o3-mini (thinking model) doesn't support images, so always use vision model for image uploads
+            // Use gpt-4o for vision tasks regardless of thinking mode
+            const modelOverride = 'gpt-4o';
 
-            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, modelOverride ? { model: modelOverride, mimeType: processedMime } : { mimeType: processedMime });
+            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, { model: modelOverride, mimeType: processedMime });
 
             const aiMessage = await messageModel.create({
                 user: socket.user._id,
