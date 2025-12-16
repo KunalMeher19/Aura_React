@@ -16,6 +16,7 @@ Note: the frontend in this project is configured to call the backend at the URL 
 - User registration & login (JWT stored in cookie)
 - Real-time chat using Socket.IO
 - File uploads (ImageKit)
+- OpenAI integration with tiered model selection
 - Vector storage with Pinecone for memory/embeddings
 - MongoDB for persistent storage
 - PWA support via `vite-plugin-pwa`
@@ -24,6 +25,7 @@ Note: the frontend in this project is configured to call the backend at the URL 
 
 - Frontend: React, Vite, Redux Toolkit, react-router, axios
 - Backend: Node.js, Express, Socket.IO, Mongoose
+- AI: OpenAI (gpt-4o-mini, o3-mini, gpt-4.1)
 - Services: Pinecone, ImageKit
 
 ## Quick start (development)
@@ -80,6 +82,7 @@ npx nodemon server.js
 
 Create a `.env` file in `Backend/` with at least the following entries:
 
+- `OPENAI_API_KEY` — OpenAI API key for AI generation and embeddings
 - `MONGO_URI` — MongoDB connection string (e.g. from MongoDB Atlas)
 - `JWT_SECRET` — secret key used to sign JWT tokens
 - `IMAGEKIT_PUBLICKEY` — ImageKit public key (for file uploads)
@@ -91,6 +94,7 @@ Create a `.env` file in `Backend/` with at least the following entries:
 Example `.env` (do not commit this file):
 
 ```
+OPENAI_API_KEY=sk-proj-...
 MONGO_URI=mongodb+srv://user:pass@cluster.example.mongodb.net/dbname
 JWT_SECRET=your_jwt_secret_here
 IMAGEKIT_PUBLICKEY=your_imagekit_public_key
@@ -155,13 +159,25 @@ Extension points:
 - Add metadata filters to scope retrieval (for example by chat topic tags or privacy flags).
 - Implement memory aging or LRU eviction by adding timestamps and periodically deleting older vectors with `deleteChatMemory`.
 
-## Deep-thinking / Deep-linking mode
+## AI Model Selection
+
+The application uses OpenAI's models with intelligent tiered selection based on the task:
+
+| Mode | Model | Use Case |
+|------|-------|----------|
+| **Basic Chat** | `gpt-4o-mini` | Fast, cost-effective conversations |
+| **Thinking Mode** | `o3-mini` | Advanced reasoning and complex tasks |
+| **Vision/Images** | `gpt-4.1` | Image understanding and analysis |
+| **Embeddings** | `text-embedding-3-small` | 768D vectors for context retrieval |
+| **Title Generation** | `gpt-4o-mini` | Quick chat title creation |
+
+### Deep-thinking / Deep-linking mode
 
 This project includes a lightweight "deep-thinking" mode (called `mode: 'thinking'` in socket payloads) that requests a higher-capability model for complex or multi-step tasks.
 
-- How it's triggered: the frontend may include `mode: 'thinking'` when emitting `ai-message` or `ai-image-message` events. When set, the server sets `modelOverride = 'gemini-2.5-flash'` and passes the override into the AI service call. See `Backend/src/sockets/socket.server.js`.
+- How it's triggered: the frontend may include `mode: 'thinking'` when emitting `ai-message` or `ai-image-message` events. When set, the server sets `modelOverride = 'o3-mini'` and passes the override into the AI service call. See `Backend/src/sockets/socket.server.js`.
 
-- What it does: the override requests a stronger model and (optionally) could change other generation parameters (temperature, max tokens, or special system instructions). The current implementation only changes the `model` value; you can extend `aiService` to accept and apply other generation `opts`.
+- What it does: the override requests the `o3-mini` reasoning model optimized for complex problem-solving. The o3-mini model doesn't support temperature or system messages, so these are handled specially in the AI service. You can extend `aiService` to accept and apply other generation `opts`.
 
 - Deep-linking for complex problems: the app's approach to complex problems combines several tactics:
 	1. Use the RAG stack to surface related prior conversations and facts.

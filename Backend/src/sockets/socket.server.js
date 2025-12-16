@@ -153,7 +153,7 @@ function initSocketServer(httpServer) {
 
             // 4) Generate AI response right away using the processed data (no upload dependency)
             let modelOverride = undefined;
-            if (messagePayload.mode === 'thinking') modelOverride = 'gemini-2.5-flash';
+            if (messagePayload.mode === 'thinking') modelOverride = 'o3-mini';
 
             const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, modelOverride ? { model: modelOverride, mimeType: processedMime } : { mimeType: processedMime });
 
@@ -163,7 +163,7 @@ function initSocketServer(httpServer) {
                 content: aiResponse,
                 role: 'model'
             });
-            try { await chatModel.findByIdAndUpdate(chatId, { $set: { lastActivity: new Date() } }); } catch {}
+            try { await chatModel.findByIdAndUpdate(chatId, { $set: { lastActivity: new Date() } }); } catch { }
 
             // 5) Emit AI response immediately (faster perceived latency). Include previewId for client-side correlation.
             const respPayload = { content: aiResponse, chat: chatId, ...(updatedTitle ? { title: updatedTitle } : {}) };
@@ -274,17 +274,20 @@ function initSocketServer(httpServer) {
                 ]);
 
                 const stm = chatHistory.map(item => ({ role: item.role, parts: [{ text: item.content }] }));
-                const ltm = [{ role: "user", parts: [{ text: `
+                const ltm = [{
+                    role: "user", parts: [{
+                        text: `
                         The following are retrieved messages from previous chats. They are provided as context to help you respond consistently.
                         -Always prioritize the most recent messages over older ones.
                         -Use this history only to maintain continuity and relevance.
                         -If the retrieved context is irrelevant, ignore it and respond naturally to the latest user query.
 
                         ${memory.map(item => item.metadata.text).join("\n")}
-                        ` }] }];
+                        ` }]
+                }];
 
                 let modelOverride = undefined;
-                if (messagePayload.mode === 'thinking') modelOverride = 'gemini-2.5-flash';
+                if (messagePayload.mode === 'thinking') modelOverride = 'o3-mini';
 
                 // Use the new message-style generator when we already have an array
                 // of message objects (ltm + stm). Keep the original contentGenerator
@@ -296,7 +299,7 @@ function initSocketServer(httpServer) {
                 try {
                     const c = await chatModel.findById(messagePayload.chat).lean();
                     updatedTitle = c && c.title;
-                } catch {}
+                } catch { }
 
                 socket.emit("ai-response", { content: response, chat: messagePayload.chat, ...(updatedTitle ? { title: updatedTitle } : {}) });
 
