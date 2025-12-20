@@ -20,6 +20,7 @@ import {
   setChats,
   updateChatTitle
 } from '../store/chatSlice.js';
+import { processImage } from '../utils/imageUtils.js';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -204,31 +205,18 @@ const Home = () => {
       dispatch(setInput(''));
 
       try {
-        // Convert file to data URL (base64) and emit through socket
-        const file = maybeUpload.file;
-        const reader = new FileReader();
-
-        // Simulate upload progress locally while reading/converting
-        let progress = 0;
-        const progInterval = setInterval(() => {
-          progress = Math.min(95, progress + Math.floor(Math.random() * 10) + 5);
-          setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: progress } : m));
-        }, 200);
-
-        const dataUrl = await new Promise((resolve, reject) => {
-          reader.onerror = () => {
-            clearInterval(progInterval);
-            reject(new Error('Failed to read file'));
-          };
-          reader.onload = () => {
-            clearInterval(progInterval);
-            resolve(reader.result);
-          };
-          reader.readAsDataURL(file);
+        // Normalize and compress image on client-side
+        // This handles HEIC -> JPEG conversion and resizing to <1920px
+        const dataUrl = await processImage(maybeUpload.file, {
+          maxDimension: 1920,
+          quality: 0.7
         });
 
-        // Finalize progress to 100% locally
-        setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 100 } : m));
+        // Simulate upload progress (since conversion is fast, just show a quick animation)
+        setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 50 } : m));
+        setTimeout(() => {
+          setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 100 } : m));
+        }, 150);
 
         // Send over socket as image payload. Include previewId so server can correlate.
         if (!socket?.connected) throw new Error('Not connected to socket');
@@ -243,8 +231,9 @@ const Home = () => {
         });
 
         // Let server respond via ai-response handler which will clear preview
-      } catch {
-        toast.error('Failed to send image');
+      } catch (err) {
+        toast.error('Failed to process/send image');
+        console.error(err);
         setMessages(prev => prev.map(m => m.id === previewId ? { ...m, uploadProgress: 0, preview: false, uploadError: true } : m));
         dispatch(sendingFinished());
       }

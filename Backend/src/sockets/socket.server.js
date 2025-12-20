@@ -20,7 +20,7 @@ function initSocketServer(httpServer) {
 
     // Increase maxHttpBufferSize so clients can send larger binary/base64 payloads
     const io = new Server(httpServer, {
-        maxHttpBufferSize: 15 * 1024 * 1024, // 15 MB
+        maxHttpBufferSize: 20 * 1024 * 1024, // 20 MB
         cors: {
             origin: "http://localhost:5173",
             allowedHeaders: ["Content-Type", "Authorization"],
