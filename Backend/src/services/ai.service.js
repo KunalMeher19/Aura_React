@@ -8,7 +8,7 @@ const openai = new OpenAI({
 // Model configuration
 const MODELS = {
     BASIC: 'gpt-4o-mini',           // Fast, cost-effective for basic tasks
-    THINKING: 'o3-mini',            // Reasoning model for thinking mode
+    THINKING: 'gpt-5',              // Reasoning model for thinking mode
     VISION: 'gpt-4o',               // Vision-capable model for images
     TITLE: 'gpt-4o-mini',           // Quick model for title generation
     EMBEDDING: 'text-embedding-3-small'  // 768 dimensions
@@ -222,8 +222,8 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
 
         // Configure API parameters based on model type
         let apiParams;
-        if (modelName === MODELS.THINKING) {
-            // o3-mini doesn't support system messages, temperature, or max_tokens
+        if (modelName === 'o3-mini' || modelName.startsWith('o1-')) {
+            // o3-mini/o1 don't support system messages, temperature, or max_tokens in the standard way
             const systemContent = messages.find(m => m.role === 'system')?.content;
             const userMessages = messages.filter(m => m.role !== 'system');
 
@@ -244,7 +244,7 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
             apiParams = {
                 model: modelName,
                 messages: userMessages,
-                max_completion_tokens: 2000  // o3-mini uses max_completion_tokens
+                max_completion_tokens: 2000  // thinking models use max_completion_tokens
             };
         } else {
             apiParams = {
@@ -312,9 +312,9 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
             });
         });
 
-        // For o3-mini model, we need to remove system message and use specific parameters
+        // For o3-mini/o1 model, we need to remove system message and use specific parameters
         let apiParams;
-        if (modelName === MODELS.THINKING) {
+        if (modelName === 'o3-mini' || modelName.startsWith('o1-')) {
             // o3-mini doesn't support system messages, temperature, or max_tokens
             // Move system instruction to first user message
             const systemContent = messages.find(m => m.role === 'system')?.content;
