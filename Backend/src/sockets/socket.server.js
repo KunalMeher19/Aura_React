@@ -162,7 +162,7 @@ function initSocketServer(httpServer) {
             }
 
             // 4) Generate AI response right away using the processed data (no upload dependency)
-            // The contentGenerator handles image internally (two-step: nvidia vision → stepfun reasoning)
+            // openrouter/free auto-routes to a vision-capable model when an image is present
             const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, { mimeType: processedMime });
 
             const aiMessage = await messageModel.create({

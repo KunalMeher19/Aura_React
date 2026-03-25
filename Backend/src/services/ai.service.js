@@ -31,11 +31,11 @@ async function ensureClient() {
 }
 
 // Model configuration
+// openrouter/free - smart router that auto-selects free models based on request needs
+// (vision, tools, text, etc.) and handles fallbacks internally
 const MODELS = {
-  NORMAL: 'meta-llama/llama-3.3-70b-instruct:free',       // Fast, lightweight for normal chat
+  DEFAULT: 'openrouter/free',                              // Smart router for normal + vision
   THINKING: 'stepfun/step-3.5-flash:free',                 // Reasoning model for thinking mode
-  VISION: 'nvidia/nemotron-nano-12b-v2-vl:free',           // Vision model for image extraction
-  TITLE: 'meta-llama/llama-3.3-70b-instruct:free',         // Quick model for title generation
   EMBEDDING: 'nvidia/llama-nemotron-embed-vl-1b-v2:free'   // Embedding model
 };
 
@@ -101,7 +101,7 @@ async function generateTitleFromText(text) {
     try {
         const client = await ensureClient();
         const response = await client.chat.send({
-            model: MODELS.TITLE,
+            model: MODELS.DEFAULT,
             messages: [
                 { role: 'system', content: 'You are a helpful assistant that generates concise chat titles.' },
                 { role: 'user', content: prompt }
@@ -117,44 +117,10 @@ async function generateTitleFromText(text) {
     }
 }
 
-// Extract text description from an image using the vision model
-async function extractImageInfo(base64ImageFile, mimeType) {
-    try {
-        const client = await ensureClient();
-        const response = await client.chat.send({
-            model: MODELS.VISION,
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: 'Describe this image in detail. Include all visible text, objects, colors, layout, and any other relevant information that would help someone understand and answer questions about this image.'
-                        },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: `data:${mimeType};base64,${base64ImageFile}`
-                            }
-                        }
-                    ]
-                }
-            ],
-            stream: false,
-        });
-
-        return response.choices?.[0]?.message?.content || 'Unable to extract information from the image.';
-    } catch (err) {
-        console.warn('Vision model failed:', err.message);
-        return 'Unable to analyze the image. Please describe what you see in the image so I can help you.';
-    }
-}
-
 // Generate content with optional image input
-// For images: two-step flow (vision extraction → reasoning)
-// For text only: single call to appropriate model
+// Uses openrouter/free which auto-selects vision-capable models when images are present
 async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
-    const modelName = opts.model || MODELS.THINKING;
+    const modelName = opts.model || MODELS.DEFAULT;
 
     // Parse base64 image if provided
     let mimeTypeDetected;
@@ -173,46 +139,54 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
     try {
         const client = await ensureClient();
 
-        let userContent;
+        // Build messages
+        const messages = [
+            { role: 'system', content: SYSTEM_INSTRUCTION }
+        ];
 
         if (base64Data) {
-            // Two-step flow: extract image info first, then reason with stepfun
-            const imageDescription = await extractImageInfo(base64Data, mimeType);
-
-            userContent = `The user uploaded an image. Here is what the image contains:
-
----
-${imageDescription}
----
-
-The user's question/prompt about this image: ${userPrompt || 'What is in this image?'}
-
-Please analyze the image content above and provide a helpful response to the user's question.`;
+            // Image + text: openrouter/free will route to a vision-capable model
+            messages.push({
+                role: 'user',
+                content: [
+                    {
+                        type: 'text',
+                        text: userPrompt || 'What is in this image?'
+                    },
+                    {
+                        type: 'image_url',
+                        image_url: {
+                            url: `data:${mimeType};base64,${base64Data}`
+                        }
+                    }
+                ]
+            });
         } else {
-            userContent = userPrompt;
+            // Text only
+            messages.push({
+                role: 'user',
+                content: userPrompt
+            });
         }
 
         const response = await client.chat.send({
             model: modelName,
-            messages: [
-                { role: 'system', content: SYSTEM_INSTRUCTION },
-                { role: 'user', content: userContent }
-            ],
+            messages: messages,
             stream: false,
         });
 
         return response.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
     } catch (err) {
-        console.warn('AI content generation failed, returning fallback response:', err.message);
+        console.warn('AI content generation failed:', err.message);
 
         const apiMessage = err?.message || 'AI service unavailable.';
         const hasImage = !!base64Data;
         const promptPreview = userPrompt ? String(userPrompt).trim().slice(0, 200) : '';
 
         if (hasImage) {
-            return `AI service error: ${apiMessage} Mock response: I received your image${promptPreview ? ' and prompt: ' + promptPreview : '.'}`;
+            return `I received your image${promptPreview ? ' and prompt: ' + promptPreview : '.'} However, the AI service had a temporary issue. Please try again.`;
         } else {
-            return `AI service error: ${apiMessage} Mock response: I received your prompt${promptPreview ? ': ' + promptPreview : '.'}`;
+            return `I received your prompt${promptPreview ? ': ' + promptPreview : '.'} However, the AI service had a temporary issue. Please try again.`;
         }
     }
 }
@@ -223,8 +197,8 @@ Please analyze the image content above and provide a helpful response to the use
  * Converts Gemini message format to OpenRouter/OpenAI format.
  */
 async function contentGeneratorFromMessages(contentsArray, opts = {}) {
-    // Select model based on mode - thinking mode uses stepfun, normal uses llama
-    const modelName = opts.model || MODELS.NORMAL;
+    // Use stepfun for thinking mode, openrouter/free for normal
+    const modelName = opts.model || MODELS.DEFAULT;
     console.log(`[ai.service] contentGeneratorFromMessages using model: ${modelName}`);
 
     try {
@@ -235,13 +209,9 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
             { role: 'system', content: SYSTEM_INSTRUCTION }
         ];
 
-        // Convert each content item from Gemini format to OpenAI format
-        // Gemini format: { role: 'user'|'model', parts: [{ text: '...' }] }
-        // OpenAI format: { role: 'user'|'assistant'|'system', content: '...' }
         contentsArray.forEach(item => {
             if (!item || !item.parts) return;
 
-            // Extract text from parts
             const textParts = item.parts
                 .filter(p => p && p.text)
                 .map(p => p.text)
@@ -249,7 +219,6 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
 
             if (!textParts) return;
 
-            // Map role: 'model' -> 'assistant', 'user' -> 'user'
             const role = item.role === 'model' ? 'assistant' : 'user';
 
             messages.push({
@@ -267,32 +236,7 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
         return response.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
     } catch (err) {
         console.warn('AI content generation failed (messages path):', err.message);
-
-        const message = err?.message || 'AI service unavailable.';
-
-        // Build a preview text from the provided parts
-        let textParts = [];
-        try {
-            (contentsArray || []).forEach(item => {
-                if (item && item.parts) {
-                    item.parts.forEach(p => {
-                        if (p && p.text) textParts.push(p.text);
-                        if (p && p.inlineData) textParts.push('[image]');
-                    });
-                }
-            });
-        } catch (e) {
-            // ignore
-        }
-
-        const combined = textParts.join(' ').trim().slice(0, 200);
-        const hasImage = textParts.some(t => t === '[image]');
-
-        if (hasImage) {
-            return `AI service error for image: ${message} `;
-        } else {
-            return `AI service error for prompt: ${message} `;
-        }
+        return `AI service temporarily unavailable. Please try again in a moment.`;
     }
 }
 
