@@ -149,7 +149,7 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
                     },
                     {
                         type: 'image_url',
-                        image_url: {
+                        imageUrl: {
                             url: `data:${mimeType};base64,${base64Data}`
                         }
                     }
