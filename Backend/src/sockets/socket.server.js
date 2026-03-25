@@ -162,11 +162,8 @@ function initSocketServer(httpServer) {
             }
 
             // 4) Generate AI response right away using the processed data (no upload dependency)
-            // Note: o3-mini (thinking model) doesn't support images, so always use vision model for image uploads
-            // Use gpt-4o for vision tasks regardless of thinking mode
-            const modelOverride = 'gpt-4o';
-
-            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, { model: modelOverride, mimeType: processedMime });
+            // The contentGenerator handles image internally (two-step: nvidia vision → stepfun reasoning)
+            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, { mimeType: processedMime });
 
             const aiMessage = await messageModel.create({
                 user: socket.user._id,
@@ -298,7 +295,7 @@ function initSocketServer(httpServer) {
                 }];
 
                 let modelOverride = undefined;
-                if (messagePayload.mode === 'thinking') modelOverride = 'o3-mini';
+                if (messagePayload.mode === 'thinking') modelOverride = 'stepfun/step-3.5-flash:free';
 
                 // Use the new message-style generator when we already have an array
                 // of message objects (ltm + stm). Keep the original contentGenerator
