@@ -1,9 +1,4 @@
-// Dynamic import for OpenRouter SDK (ESM-only package in CommonJS project)
-let OpenRouter;
-(async () => {
-  const mod = await import('@openrouter/sdk');
-  OpenRouter = mod.OpenRouter;
-})();
+const { OpenRouter } = require('@openrouter/sdk');
 
 // Initialize OpenRouter client
 let openRouter;
@@ -22,9 +17,6 @@ function getClient() {
 
 // Wait for SDK to load, then create client
 async function ensureClient() {
-  if (!OpenRouter) {
-    await new Promise(r => setTimeout(r, 100));
-  }
   const client = getClient();
   if (!client) throw new Error('OpenRouter SDK failed to initialize');
   return client;
@@ -101,12 +93,14 @@ async function generateTitleFromText(text) {
     try {
         const client = await ensureClient();
         const response = await client.chat.send({
-            model: MODELS.DEFAULT,
-            messages: [
-                { role: 'system', content: 'You are a helpful assistant that generates concise chat titles.' },
-                { role: 'user', content: prompt }
-            ],
-            stream: false,
+            chatGenerationParams: {
+                model: MODELS.DEFAULT,
+                messages: [
+                    { role: 'system', content: 'You are a helpful assistant that generates concise chat titles.' },
+                    { role: 'user', content: prompt }
+                ],
+                stream: false,
+            }
         });
 
         const title = response.choices?.[0]?.message?.content || '';
@@ -170,9 +164,11 @@ async function contentGenerator(base64ImageFile, userPrompt, opts = {}) {
         }
 
         const response = await client.chat.send({
-            model: modelName,
-            messages: messages,
-            stream: false,
+            chatGenerationParams: {
+                model: modelName,
+                messages: messages,
+                stream: false,
+            }
         });
 
         return response.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
@@ -228,9 +224,11 @@ async function contentGeneratorFromMessages(contentsArray, opts = {}) {
         });
 
         const response = await client.chat.send({
-            model: modelName,
-            messages: messages,
-            stream: false,
+            chatGenerationParams: {
+                model: modelName,
+                messages: messages,
+                stream: false,
+            }
         });
 
         return response.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
@@ -245,9 +243,11 @@ async function embeddingGenerator(content) {
     try {
         const client = await ensureClient();
         const response = await client.embeddings.generate({
-            model: MODELS.EMBEDDING,
-            input: content,
-            dimensions: 768,
+            requestBody: {
+                model: MODELS.EMBEDDING,
+                input: content,
+                dimensions: 768,
+            }
         });
 
         // Response format: { data: [{ embedding: number[] }], model, usage }
