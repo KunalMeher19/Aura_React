@@ -161,9 +161,24 @@ function initSocketServer(httpServer) {
                 console.warn('Temp chat title update failed (image path):', e && (e.message || e));
             }
 
-            // 4) Generate AI response right away using the processed data (no upload dependency)
-            // openrouter/free auto-routes to a vision-capable model when an image is present
-            const aiResponse = await aiService.contentGenerator(processedDataUri, userPrompt, { mimeType: processedMime });
+            // 4) Two-step reasoning process: Extraction -> Reasoning
+            // Step 1: Extract details using vision model (openrouter/free)
+            let extractionPrompt = "Please extract all relevant information, details, text, and data from this image in detail.";
+            if (userPrompt) {
+                extractionPrompt = `Please extract all relevant information, details, text, and data from this image in detail. Pay special attention to anything needed to answer the following query: "${userPrompt}"`;
+            }
+            
+            const imageDetails = await aiService.contentGenerator(processedDataUri, extractionPrompt, { mimeType: processedMime });
+
+            // Step 2: Feed extracted details + user prompt to StepFun model for reasoning
+            let reasoningPrompt = `Extracted Image Contents:\n${imageDetails}\n\n`;
+            if (userPrompt) {
+                reasoningPrompt += `User Question:\n${userPrompt}\n\nPlease answer the user's question based on the extracted image contents. Reason step by step to arrive at the solution.`;
+            } else {
+                reasoningPrompt += "Please provide a helpful summary or analysis based on the extracted image contents.";
+            }
+
+            const aiResponse = await aiService.contentGenerator(null, reasoningPrompt, { model: 'stepfun/step-3.5-flash:free' });
 
             const aiMessage = await messageModel.create({
                 user: socket.user._id,
