@@ -162,13 +162,20 @@ function initSocketServer(httpServer) {
             }
 
             // 4) Two-step reasoning process: Extraction -> Reasoning
-            // Step 1: Extract details using vision model (openrouter/free)
+            // Step 1: Extract details using vision model explicitly
             let extractionPrompt = "Please extract all relevant information, details, text, and data from this image in detail.";
             if (userPrompt) {
                 extractionPrompt = `Please extract all relevant information, details, text, and data from this image in detail. Pay special attention to anything needed to answer the following query: "${userPrompt}"`;
             }
             
-            const imageDetails = await aiService.contentGenerator(processedDataUri, extractionPrompt, { mimeType: processedMime });
+            // We use google/gemma-3-27b-it:free explicitly to ensure it routes to a vision model reliably.
+            const imageDetails = await aiService.contentGenerator(processedDataUri, extractionPrompt, { mimeType: processedMime, model: 'google/gemma-3-27b-it:free' });
+
+            // If extraction fails, aiService returns a fallback string. Catch it so we don't confuse the reasoning model
+            if (imageDetails.includes('However, the AI service had a temporary issue')) {
+                socket.emit('ai-response', { content: "Image extraction failed due to a temporary provider issue. Please try again.", chat: chatId });
+                return;
+            }
 
             // Step 2: Feed extracted details + user prompt to StepFun model for reasoning
             let reasoningPrompt = `Extracted Image Contents:\n${imageDetails}\n\n`;
